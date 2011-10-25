@@ -494,7 +494,7 @@ class IndividualView(MaegenStackableWindow):
         else:
             logging.debug("no widget for mother becaue there is no mother and not in edit mode")
 
-    def _open_dialog_to_select_parent(self, parent):
+    def _open_dialog_to_select_parent(self, widget, parent):
         selector = hildon.TouchSelectorEntry()
         model = gtk.ListStore(str, object)
         for indi in self.zcore.retrieve_all_individuals():
@@ -599,13 +599,13 @@ class IndividualView(MaegenStackableWindow):
         if self.edit_mode:
             # open a dialog an individual or create a new one
             if data == self.edit_father:
-                self._open_dialog_to_select_parent("father")
+                self._open_dialog_to_select_parent(widget, "father")
             elif  data == self.edit_mother:                
-                self._open_dialog_to_select_parent("mother")                
+                self._open_dialog_to_select_parent(widget, "mother")                
             elif data == self.individual.father and self.edit_father is None:                
-                self._open_dialog_to_select_parent("father")
+                self._open_dialog_to_select_parent(widget, "father")
             elif data == self.individual.mother and self.edit_mother is None:
-                self._open_dialog_to_select_parent("mother")
+                self._open_dialog_to_select_parent(widget,"mother")
             else:
                 logging.error("unexpected data attribute " + str(data))
            
