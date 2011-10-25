@@ -497,9 +497,17 @@ class IndividualView(MaegenStackableWindow):
     def _open_dialog_to_select_parent(self, widget, parent):
         selector = hildon.TouchSelectorEntry()
         model = gtk.ListStore(str, object)
+        logging.debug("creating list for parent selection...")
         for indi in self.zcore.retrieve_all_individuals():
-            model.append([str(indi), indi])
-        
+            if parent == "father":
+                if indi.gender in ["male", None] and not indi == self.individual:
+                    model.append([str(indi), indi])
+            elif parent == "mother":
+                if indi.gender in ["female", None] and not indi == self.individual:
+                    model.append([str(indi), indi])
+            else:
+                logging.error("unexpected parent parameter " + str(parent))
+                    
         selector.append_column(model, gtk.CellRendererText(), text=0)
         selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
         dialog = hildon.PickerDialog(self)
