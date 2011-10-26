@@ -542,7 +542,7 @@ class IndividualView(MaegenStackableWindow):
             
     def on_save_clicked_event(self, widget, data):
         
-        if self.father_enabled.get_active() and self.edit_father :
+        if self.individual.father_enabled.get_active() and self.edit_father :
             self.individual.father = self.edit_father
         elif not self.father_enabled.get_active():
             self.individual.father = None
