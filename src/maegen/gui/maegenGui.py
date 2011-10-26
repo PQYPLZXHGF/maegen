@@ -510,6 +510,14 @@ class IndividualView(MaegenStackableWindow):
         menu.show_all()
         self.set_app_menu(menu)  
 
+    def pop_and_show_individual(self):
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = IndividualView(self.zcore, self.individual, False)
+        self.program.add_window(window)
+        window.show_all()
+
+
     def _on_edit_menu_clicked(self, widget, data):
         # remove  the currentview
         hildon.WindowStack.get_default().pop_1()
@@ -531,15 +539,42 @@ class IndividualView(MaegenStackableWindow):
            self.add_button(cancel_btn)
         else:
             logging.debug("not in edit mode, NO bottom button")
-    def on_save_clicked_event(selfself, widget, data):
-        not_yet_implemented()
+            
+    def on_save_clicked_event(self, widget, data):
+        
+        if self.father_enabled.get_active() and self.edit_father :
+            self.individual.father = self.edit_father
+        elif not self.father_enabled.get_active():
+            self.individual.father = None
+        
+        if self.mother_enabled.get_active() and self.edit_mother:
+            self.individual.mother = self.edit_mother
+        elif not self.mother_enabled.get_active():
+            self.individual.mother = None
+            
+        self.individual.name = self.edit_name.get_text()
+        self.individual.firstname = self.edit_firstname.get_text()
+        self.individual.nickname = self.edit_nickname.get_text()
+        
+        self.individual.occupation = self.edit_occupation.get_text()
+        if self.birthdate_enable.get_active():
+            y,m,d = self.edit_birthdate.get_date()
+            self.individual.birthDate = datetime.date(y,m+1,d) 
+        else:
+            self.individual.birthDate = None
+        if self.deathdate_enable.get_active():
+            y,m,d = self.edit_deathdate.get_date()
+            self.individual.deathDate = datetime.date(y,m+1,d)
+        else:
+            self.individual.deathDate = None
+        
+        model, iter = self.edit_gender_picker.get_selector().get_selected(0)
+        self.individual.gender = model.get(iter,0)[0]      
+        
+        self.pop_and_show_individual()
         
     def on_cancel_clicked_event(self, widget, data):
-        hildon.WindowStack.get_default().pop_1()
-        # open the clicked parent
-        window = IndividualView(self.zcore,self.individual, False)
-        self.program.add_window(window)
-        window.show_all()
+        self.pop_and_show_individual()
 
     def _create_parent_pane(self, individual):
         logging.debug("creating parent pane for " + str(individual))
@@ -757,9 +792,15 @@ class IndividualView(MaegenStackableWindow):
         # name
         if self.edit_mode:
             self.edit_name = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-            self.edit_name.set_placeholder(individual.name)
+            if self.individual.name:
+                self.edit_name.set_text(self.individual.name)
+            else:
+                self.edit_name.set_placeholder("enter a name")
             self.edit_firstname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-            self.edit_firstname.set_placeholder(individual.firstname)
+            if self.individual.firstname:
+                self.edit_firstname.set_text(self.individual.firstname)
+            else:
+                self.edit_firstname.set_placeholder("enter the firstane")
             identification.pack_start(hildon.Caption(None,"Firstname",self.edit_firstname), expand=False)
             identification.pack_start(hildon.Caption(None,"Name",self.edit_name), expand=False) 
         else:            
@@ -768,7 +809,10 @@ class IndividualView(MaegenStackableWindow):
         # nickname
         if self.edit_mode:
             self.edit_nickname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-            self.edit_nickname.set_placeholder(individual.nickname)           
+            if self.individual.nickname:
+                self.edit_nickname.set_text(self.individual.nickname)
+            else:
+                self.edit_nickname.set_placeholder("enter a nickname")           
             identification.pack_start(hildon.Caption(None,"Nickname",self.edit_nickname), expand=False)
         else:
             if individual.nickname and individual.nickname != "":
