@@ -49,6 +49,15 @@ def show_banner_information(mess):
        parent = hildon.WindowStack.get_default().peek()
        banner= hildon.hildon_banner_show_information(parent,"", mess)
        banner.set_timeout(2000)  
+       
+def show_about_dialog(widget, data):
+       '''
+       Show an information dialog about the program
+       '''
+       window = AboutView()
+       program = hildon.Program.get_instance()     
+       program.add_window(window)
+       window.show_all()
 
 class MaegenGui(object):
     '''
@@ -88,6 +97,8 @@ class MaegenGui(object):
         self.init_menu(window)
         self.program.add_window(window)
         window.show_all()
+    
+
     
 
     def send_exception_signal(self):
@@ -158,7 +169,7 @@ class MaegenGui(object):
         
         aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
         aboutMenuBtn.set_label("About");
-        aboutMenuBtn.connect("clicked", self.show_about_dialog, None)
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
         menu.append(aboutMenuBtn)
 
         
@@ -175,14 +186,7 @@ class MaegenGui(object):
    
     
 
-    def show_about_dialog(self, widget, data):
-       '''
-       Show an information dialog about the program
-       '''
-       window = AboutView()
-        
-       self.program.add_window(window)
-       window.show_all()
+
        
     def show_new_dialog(self, widget, data):
        '''
@@ -348,7 +352,10 @@ class DefaultView(MaegenStackableWindow):
         openMenuBtn.connect("clicked", self.on_search_menu_clicked, None)
         menu.append(openMenuBtn) 
         
-        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
         
         menu.show_all()
         self.set_app_menu(menu)  
@@ -358,6 +365,11 @@ class DefaultView(MaegenStackableWindow):
 
 
 
+    def refresh(self):
+        self.individual_count_label.set_text(str(self.zcore.individuals_count()))
+        self.family_count_label.set_text(str(self.zcore.families_count()))
+        self.branche_count_label.set_text(str(self.zcore.branches_count()))
+        self.name_count_label.set_text(str(self.zcore.names_count()))
 
 
     def on_browse_menu_clicked(self, widget, data):
@@ -434,7 +446,30 @@ class DefaultView(MaegenStackableWindow):
         self.add_button(add_fami_btn)
         
     def on_add_individual_clicked_event(self, widget, data):
-        not_yet_implemented()
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("New individual")
+        
+        dialog.add_button("Create", gtk.RESPONSE_OK)
+        firstname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        name = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        nickname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        dialog.vbox.add(hildon.Caption(None,"Firstname",firstname))
+        dialog.vbox.add(hildon.Caption(None,"Name",name))
+        dialog.vbox.add(hildon.Caption(None,"Nickname",nickname))
+        dialog.show_all()
+        resu = dialog.run()
+        if resu == gtk.RESPONSE_OK:            
+            new_indi = self.zcore.create_new_individual(name.get_text(), firstname.get_text())
+            self.refresh()
+            new_indi.nickname = nickname.get_text()
+            dialog.destroy()
+            window = IndividualView(self.zcore,new_indi)
+            self.program.add_window(window)
+            window.show_all()
+        else:
+            dialog.destroy()
+        
     
     def on_add_family_clicked_event(self, widget, data):
         not_yet_implemented()
@@ -445,13 +480,66 @@ class IndividualView(MaegenStackableWindow):
     This pane show somme statistical information about the database
     and main action such as add a new individual and add a new family
     '''
-    def __init__(self, zcore, individual, edit_mode=True):
+    def __init__(self, zcore, individual, edit_mode=False):
         self.zcore = zcore
         self.individual = individual
         self.edit_mode = edit_mode
         self.edit_father = None
         self.edit_mother = None
         MaegenStackableWindow.__init__(self, str(individual))
+        
+                # add app menu
+        
+        menu = hildon.AppMenu()
+                                                                                                                                                          
+        if not self.edit_mode:
+            editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+            editBtn.set_label("Edit");
+            editBtn.connect("clicked", self._on_edit_menu_clicked, None)
+            menu.append(editBtn)   
+        
+
+        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
+        
+        
+        
+        menu.show_all()
+        self.set_app_menu(menu)  
+
+    def _on_edit_menu_clicked(self, widget, data):
+        # remove  the currentview
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = IndividualView(self.zcore,self.individual, True)
+        self.program.add_window(window)
+        window.show_all()
+
+    def init_bottom_button(self, bottomButtons):
+        logging.debug("init_bottom_button for individualView...")
+        if self.edit_mode: 
+           logging.debug("in edit mode")
+           save_btn = self.create_button("Save")
+           save_btn.connect("clicked", self.on_save_clicked_event, None)
+           self.add_button(save_btn)
+        
+           cancel_btn = self.create_button("Cancel")
+           cancel_btn.connect("clicked", self.on_cancel_clicked_event, None)
+           self.add_button(cancel_btn)
+        else:
+            logging.debug("not in edit mode, NO bottom button")
+    def on_save_clicked_event(selfself, widget, data):
+        not_yet_implemented()
+        
+    def on_cancel_clicked_event(self, widget, data):
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = IndividualView(self.zcore,self.individual, False)
+        self.program.add_window(window)
+        window.show_all()
 
     def _create_parent_pane(self, individual):
         logging.debug("creating parent pane for " + str(individual))
@@ -510,6 +598,16 @@ class IndividualView(MaegenStackableWindow):
                     
         selector.append_column(model, gtk.CellRendererText(), text=0)
         selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        def __enable_prent_checkbox(column , user_data):
+            if parent == "father":
+                self.father_enabled.set_active(True)    
+            elif parent == "mother":
+                self.mother_enabled.set_active(True)
+            else:
+                logging.error("unexpected parent parameter " + str(parent)) 
+            
+        selector.connect("changed", __enable_prent_checkbox)
+        
         dialog = hildon.PickerDialog(self)
         dialog.set_transient_for(self)
         dialog.set_title("Select an individual")
@@ -568,10 +666,13 @@ class IndividualView(MaegenStackableWindow):
                 image.set_from_pixbuf(pixbuf)
             else:
                 image = gtk.image_new_from_stock(gtk.STOCK_INFO, gtk.ICON_SIZE_BUTTON)
+        else:
+            image = gtk.image_new_from_stock(gtk.STOCK_INFO, gtk.ICON_SIZE_BUTTON)
         return image
 
 
     def _create_parent_widget(self, individual):
+        widget = gtk.HBox()
         button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
         # Set labels value
         datestr = ""
@@ -590,7 +691,9 @@ class IndividualView(MaegenStackableWindow):
         button.set_image_position(gtk.POS_RIGHT)
                                         
         button.connect("clicked", self._on_parent_clicked_event, individual)
+        widget.pack_start(button)
         if self.edit_mode:
+            
             if individual == self.individual.father and not self.edit_father:
                 self.edit_father = None
             elif  individual == self.individual.mother and not self.edit_mother:
@@ -600,8 +703,20 @@ class IndividualView(MaegenStackableWindow):
             elif individual == self.edit_mother:
                 pass
             else:
-                logging.error("unexpected individual parameter " + str(individual))       
-        return button
+                logging.error("unexpected individual parameter " + str(individual))        
+                   
+            if individual == self.individual.father or individual == self.edit_father:                
+                self.father_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+                self.father_enabled.set_label("enabled")
+                self.father_enabled.set_active(True)
+                widget.pack_start(self.father_enabled, expand=False)
+            if individual == self.individual.mother or individual == self.edit_mother:                
+                self.mother_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+                self.mother_enabled.set_label("enabled")
+                self.mother_enabled.set_active(True)
+                widget.pack_start(self.mother_enabled, expand=False)
+               
+        return widget
     
     def _on_parent_clicked_event(self, widget, data):
         if self.edit_mode:
@@ -659,7 +774,7 @@ class IndividualView(MaegenStackableWindow):
             if individual.nickname and individual.nickname != "":
                 identification.pack_start(self.justifyLeft(gtk.Label("dit " + str(individual.nickname))))
         
-        header.pack_start(identification, expand=False)
+        header.pack_start(identification)
         
         # Description        
         description = gtk.VBox()
@@ -719,7 +834,7 @@ class IndividualView(MaegenStackableWindow):
                 description.pack_start(self.justifyLeft(gtk.Label("Age of death " + str((individual.deathDate - individual.birthDate).days / 365) + " year(s) old")))
         
         
-        header.pack_start(description, expand=False)
+        header.pack_start(description)
         
         return header
     
@@ -777,15 +892,6 @@ class IndividualView(MaegenStackableWindow):
 
     
     
-    def init_bottom_button(self, bottomButtons):
-        pass
-#        add_indi_btn = self.create_button("Add Individual")
-#        add_indi_btn.connect("clicked", self.on_add_individual_clicked_event, None)
-#        self.add_button(add_indi_btn)
-#        
-#        add_fami_btn = self.create_button("Add Family")
-#        add_fami_btn.connect("clicked", self.on_add_family_clicked_event, None)
-#        self.add_button(add_fami_btn)
         
 
 
