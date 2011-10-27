@@ -31,7 +31,7 @@ import ez_setup
 ez_setup.use_setuptools()
 
 from setuptools import setup, find_packages
-setup(name='magen',
+setup(name='maegen',
       version='0.1.0-SNAPSHOT',
       package_dir = {'': 'src'},
       packages=find_packages(),               
