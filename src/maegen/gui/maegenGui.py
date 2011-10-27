@@ -1,5 +1,27 @@
 # -*- encoding: UTF-8 -*-
 
+#    Maegen is a genealogical application for N900. Use it on the go
+#    to store genealogical data including individuals and relational
+#    informations. Maegen can be used to browse collected data on the
+#    device but the main goal is its capabilitie to export the dtabase
+#    in a GEDCOM file which can be imported into any desktop genealocial
+#    application.
+#
+#    Copyright (C) 2011  Thierry Bressure
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>
+
 '''
 Created on Oct 14, 2011
 
@@ -970,6 +992,57 @@ class AboutView(MaegenStackableWindow):
         groupsiteButton = self.create_button("Groups")
         groupsiteButton.connect("clicked", self.on_group_clicked_event, None)
         self.add_button(groupsiteButton)
+        
+        licenceButton = self.create_button("Licence")
+        licenceButton.connect("clicked", self.on_licence_clicked_event, None)
+        self.add_button(licenceButton)
+
+    def on_licence_clicked_event(self, widget, data):
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("Copyright information")        
+        dialog.add_button("Ok", gtk.RESPONSE_OK)
+        gpl = hildon.TextView()
+        gpl_licence = """
+Maegen is a genealogical application for N900. Use it
+on the go to store genealogical data including
+individuals and relational informations. Maegen can
+be used to browse collected data on the device but
+the main goal is its capabilitie to export the
+database in a GEDCOM file which can be imported into
+any desktop genealocial application.
+
+Copyright (C) 2011  Thierry Bressure
+
+This program is free software: you can redistribute
+it and/or modify it under the terms of the GNU
+General Public License as published by the Free
+Software Foundation, either version 3 of the License,
+or (at your option) any later version.
+
+This program is distributed in the hope that it will
+be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public
+License for more details.
+
+You should have received a copy of the GNU General
+Public License along with this program. If not, see
+<http://www.gnu.org/licenses/>
+        """
+        buffer = gtk.TextBuffer()
+        buffer.set_text(gpl_licence)        
+        gpl.set_buffer(buffer)
+        gpl.set_property('editable', False)
+        
+        pannable_area = hildon.PannableArea()
+        pannable_area.set_property('mov_mode',hildon.MOVEMENT_MODE_BOTH)
+        pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
+        pannable_area.add_with_viewport(gpl)
+        dialog.vbox.add(pannable_area)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
 
     def on_blog_clicked_event(self, widget, data):
          webbrowser.open_new_tab("http://blog.maegen.bressure.net");
@@ -980,7 +1053,7 @@ class AboutView(MaegenStackableWindow):
     def on_group_clicked_event(self, widget, data):
          webbrowser.open_new_tab("http://group.maegen.bressure.net");
              
-    
+
 
 class SplashScreenView(MaegenStackableWindow):
     '''
