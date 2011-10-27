@@ -57,6 +57,7 @@ setup(name='maegen',
           'Operating System :: POSIX :: Linux',
           'Programming Language :: Python'          
           ],
-
+          zip_safe=False
+   
       )
 
