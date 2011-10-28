@@ -39,12 +39,11 @@ version.getInstance().submitRevision("$Revision: 155 $")
 def get_maegen_storage_dir():
     '''
     Compute the application storage dir.
-    This is an utility function to retrieve the directory where zourite can
+    This is an utility function to retrieve the directory where maegen can
     store any file like settings or cached data.
     '''
-    storage = os.path.expanduser("~")
-    storage = os.path.join(storage, "MyDocs")
-    storage = os.path.join(storage, ".documents")
+    storage = os.path.expanduser("~")    
+    storage = os.path.join(storage, ".maegen")
     return storage
 
 class Maegen(object):
