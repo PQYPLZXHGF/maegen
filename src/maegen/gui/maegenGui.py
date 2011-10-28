@@ -81,6 +81,40 @@ def show_about_dialog(widget, data):
        program.add_window(window)
        window.show_all()
 
+
+def _default_exception_handler(gtk_sync = False):
+        '''
+        Do appropriate action when the core throw a Exception.
+        Currently simply display a banner message.
+        '''
+        type, value,tb = sys.exc_info()             
+        self.__default_exception_handler(type, value, tb, gtk_sync = gtk_sync)
+                        
+def __default_exception_handler(type, value, tb, gtk_sync = False):
+        logging.exception("!!! UNHANDLED EXCEPTION !!!")
+        if gtk_sync :
+            gtk.gdk.threads_enter()
+        self.show_banner_information("An exception occured, please report the bug")
+        window = BugReportView(type, value, tb, self.submit_issue)
+        self.init_menu(window)
+        self.program.add_window(window)
+        window.show_all()
+        if gtk_sync : 
+            gtk.gdk.threads_leave()
+
+       
+def _call_handled_method(method, *arg):
+       '''
+       This utility function catch error on a gentle way
+       ''' 
+       try:
+            method(*arg)
+       except :
+            # this is an unkown exception
+            self._default_exception_handler()
+
+      
+
 class MaegenGui(object):
     '''
     This is the GUI of Maegen
@@ -226,11 +260,16 @@ class MaegenGui(object):
        parent = hildon.WindowStack.get_default().peek()
        fc = gobject.new(hildon.FileChooserDialog, title="New database", action=gtk.FILE_CHOOSER_ACTION_SAVE)
        fc.set_property('show-files',True)    
+       fc.set_do_overwrite_confirmation(True)
        self._set_default_folder_if_needed()                   
        fc.set_current_folder(self._last_folder)
        if fc.run()==gtk.RESPONSE_OK: 
             filepath = fc.get_filename()    
-            self._last_folder = fc.get_current_folder()                    
+            self._last_folder = fc.get_current_folder()              
+            self.zcore.create_new_database(filepath)            
+            window = DefaultView(self.zcore, filepath)        
+            self.program.add_window(window)
+            window.show_all()                     
        fc.destroy()
 
        
@@ -247,8 +286,8 @@ class MaegenGui(object):
             filepath = fc.get_filename()
             self._last_folder = fc.get_current_folder()            
             fc.destroy()   
-            self.zcore.load_database(filepath) 
-            window = DefaultView(self.zcore)        
+            self.zcore.load_database(filepath)                         
+            window = DefaultView(self.zcore, filepath)        
             self.program.add_window(window)
             window.show_all()     
        else:                 
@@ -365,8 +404,9 @@ class DefaultView(MaegenStackableWindow):
     This pane show somme statiscial information about the database
     and main action such as add a new individual and add a new family
     '''
-    def __init__(self, zcore):
+    def __init__(self, zcore, database_filename):
         self.zcore = zcore       
+        self.database_filename = database_filename
         self.individual_count_label = None
         self.family_count_label = None
         self.branche_count_label = None
@@ -438,7 +478,7 @@ class DefaultView(MaegenStackableWindow):
             model, iter = selector.get_selected(0)
             indi = model.get(iter,1)[0]        
             dialog.destroy()    
-            window = IndividualView(self.zcore,indi)
+            window = IndividualView(self.zcore,indi, self.database_filename)
             self.program.add_window(window)
             window.show_all()
         else:
@@ -496,10 +536,11 @@ class DefaultView(MaegenStackableWindow):
         resu = dialog.run()
         if resu == gtk.RESPONSE_OK:            
             new_indi = self.zcore.create_new_individual(name.get_text(), firstname.get_text())
+            self.zcore.save_database(self.database_filename)
             self.refresh()
             new_indi.nickname = nickname.get_text()
             dialog.destroy()
-            window = IndividualView(self.zcore,new_indi)
+            window = IndividualView(self.zcore,new_indi, self.database_filename)
             self.program.add_window(window)
             window.show_all()
         else:
@@ -515,8 +556,9 @@ class IndividualView(MaegenStackableWindow):
     This pane show somme statistical information about the database
     and main action such as add a new individual and add a new family
     '''
-    def __init__(self, zcore, individual, edit_mode=False):
+    def __init__(self, zcore, individual, database_filename, edit_mode=False):
         self.zcore = zcore
+        self.database_filename = database_filename
         self.individual = individual
         self.edit_mode = edit_mode
         self.edit_father = None
@@ -548,7 +590,7 @@ class IndividualView(MaegenStackableWindow):
     def pop_and_show_individual(self):
         hildon.WindowStack.get_default().pop_1()
         # open the clicked parent
-        window = IndividualView(self.zcore, self.individual, False)
+        window = IndividualView(self.zcore, self.individual,self.database_filename, False)
         self.program.add_window(window)
         window.show_all()
 
@@ -557,7 +599,7 @@ class IndividualView(MaegenStackableWindow):
         # remove  the currentview
         hildon.WindowStack.get_default().pop_1()
         # open the clicked parent
-        window = IndividualView(self.zcore,self.individual, True)
+        window = IndividualView(self.zcore,self.individual, self.database_filename, True)
         self.program.add_window(window)
         window.show_all()
 
@@ -576,16 +618,24 @@ class IndividualView(MaegenStackableWindow):
             logging.debug("not in edit mode, NO bottom button")
             
     def on_save_clicked_event(self, widget, data):
-        
-        if self.individual.father_enabled.get_active() and self.edit_father :
-            self.individual.father = self.edit_father
-        elif not self.father_enabled.get_active():
-            self.individual.father = None
-        
-        if self.mother_enabled.get_active() and self.edit_mother:
-            self.individual.mother = self.edit_mother
-        elif not self.mother_enabled.get_active():
-            self.individual.mother = None
+        # TODO parent manipulation MUST be done at business level
+        if self.edit_father:
+            if self.father_enabled.get_active():
+                self.individual.father = self.edit_father
+            else:
+                self.individual.father = None                        
+        elif self.individual.father:
+            if not self.father_enabled.get_active() :
+                self.individual.father = None
+            
+        if self.edit_mother:            
+            if self.mother_enabled.get_active():
+                self.individual.mother = self.edit_mother
+            else:
+                self.individual.mother = None
+        elif self.individual.mother: 
+            if not self.mother_enabled.get_active():
+                self.individual.mother = None
             
         self.individual.name = self.edit_name.get_text()
         self.individual.firstname = self.edit_firstname.get_text()
@@ -605,6 +655,9 @@ class IndividualView(MaegenStackableWindow):
         
         model, iter = self.edit_gender_picker.get_selector().get_selected(0)
         self.individual.gender = model.get(iter,0)[0]      
+        
+        # after all job done, save the database
+        self.zcore.save_database(self.database_filename)
         
         self.pop_and_show_individual()
         
@@ -719,7 +772,7 @@ class IndividualView(MaegenStackableWindow):
         elif individual.gender == "female":
            picker_button.set_active(2)
         else:
-           picker_button.set_active(3)
+           picker_button.set_active(0)
         
         return picker_button
 
@@ -807,7 +860,7 @@ class IndividualView(MaegenStackableWindow):
             # remove  the currentview
             hildon.WindowStack.get_default().pop_1()
             # open the clicked parent
-            window = IndividualView(self.zcore,data)
+            window = IndividualView(self.zcore,data, self.database_filename)
             self.program.add_window(window)
             window.show_all()
     
