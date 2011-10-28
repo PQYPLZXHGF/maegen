@@ -86,6 +86,7 @@ class MaegenGui(object):
     This is the GUI of Maegen
     '''
 
+    _last_folder = None
 
     def __init__(self, mocked=False):
         '''
@@ -101,6 +102,14 @@ class MaegenGui(object):
         self.exception_signal_handler_id = gobject.timeout_add(1000, self.receive_exception_signal)
 
         self.init_main_view()   
+
+    def _set_default_folder_if_needed(self):
+        if not self._last_folder:
+            storage = os.path.expanduser("~")
+            storage = os.path.join(storage, "MyDocs")
+            storage = os.path.join(storage, ".documents")
+            self._last_folder = storage
+
  
 
 
@@ -217,9 +226,11 @@ class MaegenGui(object):
        parent = hildon.WindowStack.get_default().peek()
        fc = gobject.new(hildon.FileChooserDialog, title="New database", action=gtk.FILE_CHOOSER_ACTION_SAVE)
        fc.set_property('show-files',True)    
-       fc.set_current_folder(self.zcore.get_maegen_storage_dir())
+       self._set_default_folder_if_needed()                   
+       fc.set_current_folder(self._last_folder)
        if fc.run()==gtk.RESPONSE_OK: 
-            filepath = fc.get_filename()                        
+            filepath = fc.get_filename()    
+            self._last_folder = fc.get_current_folder()                    
        fc.destroy()
 
        
@@ -229,10 +240,12 @@ class MaegenGui(object):
        '''
        parent = hildon.WindowStack.get_default().peek()
        fc = gobject.new(hildon.FileChooserDialog, title="Choose a database", action=gtk.FILE_CHOOSER_ACTION_OPEN)
-       fc.set_property('show-files',True)    
-       fc.set_current_folder(self.zcore.get_maegen_storage_dir())
+       fc.set_property('show-files',True)
+       self._set_default_folder_if_needed()                   
+       fc.set_current_folder(self._last_folder)
        if fc.run()==gtk.RESPONSE_OK: 
             filepath = fc.get_filename()
+            self._last_folder = fc.get_current_folder()            
             fc.destroy()   
             self.zcore.load_database(filepath) 
             window = DefaultView(self.zcore)        
