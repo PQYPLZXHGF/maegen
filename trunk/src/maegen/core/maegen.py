@@ -65,18 +65,34 @@ class Maegen(object):
         else:
             os.makedirs(storage)
 
+        
+
     
     def _save_database(self, filename):
         '''
         Save the current database into a file
-        '''
-        pass
+        '''        
+        storage = filename
+        try:           
+            file = open(storage,'wb')
+            pickle.dump(self.database,file)
+            file.close()
+        except IOError:
+            logging.error("failed to save the database")
+            raise
     
     def _load_database(self, filename):
         '''
         Read a database from a file. The new database become the current database. 
-        '''
-        pass
+        '''                
+        storage = filename
+        try:           
+            file = open(storage,'rb')
+            self.database = pickle.load(file)
+            file.close()
+        except IOError, EOFError:
+            logging.error("failed to load the database")
+            raise 
     
     '''
     Facade function
@@ -125,7 +141,7 @@ class Maegen(object):
         resu = Individual()
         resu.name = name
         resu.firstname = firstname
-        self.database.individuals.add(resu)
+        self.database.individuals.add(resu)       
         return resu
     
     def create_new_family(self, husband, wife):
@@ -170,7 +186,7 @@ class Maegen(object):
         '''
         Read a database from a file
         '''        
-        self._load_database(filename)
+        self._load_database(database_file)
 
 
     def save_database(self, database_file):
