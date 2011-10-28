@@ -34,7 +34,7 @@ from setuptools import setup, find_packages
 setup(name='maegen',
       version='0.1.0-SNAPSHOT',
       package_dir = {'': 'src'},
-      packages=find_packages(),               
+      packages=find_packages(where='src'),               
       scripts=['scripts/maegen'],
       package_data={'maegen': ['*.png','*.jpg']},      
       data_files=[('/usr/share/applications/hildon',['hildon/maegen.desktop']),
