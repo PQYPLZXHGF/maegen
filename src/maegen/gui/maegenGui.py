@@ -548,7 +548,40 @@ class DefaultView(MaegenStackableWindow):
         
     
     def on_add_family_clicked_event(self, widget, data):
-        not_yet_implemented()
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("New Family")
+        
+        dialog.add_button("Create", gtk.RESPONSE_OK)
+        parent_pane_selector = gtk.HBox()
+        husband_selector = hildon.TouchSelector()
+        wife_selector = hildon.TouchSelector()
+        husband_model = gtk.ListStore(str, object)
+        wife_model = gtk.ListStore(str, object)
+        logging.debug("creating list for husband selection...")
+        for indi in self.zcore.retrieve_all_individuals():
+            if indi.gender in ["male", None] :
+                    husband_model.append([str(indi), indi])
+            elif indi.gender in ["female", None] :
+                    wife_model.append([str(indi), indi])
+            else:
+                logging.warning("unexpected gender for " + str(parent))
+                husband_model.append([str(indi), indi])
+                wife_model.append([str(indi), indi])
+                    
+        wife_selector.append_column(wife_model, gtk.CellRendererText(), text=0)
+        husband_selector.append_column(husband_model, gtk.CellRendererText(), text=0)
+        husband_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        wife_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        parent_pane_selector.add(hildon.Caption(None,"husband",husband_selector))
+        parent_pane_selector.add(hildon.Caption(None,"wife",wife_selector))
+        dialog.vbox.add(parent_pane_selector)
+        dialog.show_all()
+        resu = dialog.run()
+        if resu == gtk.RESPONSE_OK:            
+            dialog.destroy()
+        else:
+            dialog.destroy()
 
 
 class IndividualView(MaegenStackableWindow):
