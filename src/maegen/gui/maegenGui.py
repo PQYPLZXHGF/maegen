@@ -618,24 +618,24 @@ class IndividualView(MaegenStackableWindow):
             logging.debug("not in edit mode, NO bottom button")
             
     def on_save_clicked_event(self, widget, data):
-        # TODO parent manipulation MUST be done at business level
+        
         if self.edit_father:
             if self.father_enabled.get_active():
-                self.individual.father = self.edit_father
+                self.zcore.set_father(self.individual,self.edit_father)
             else:
-                self.individual.father = None                        
+                self.zcore.remove_father(self.individual)                        
         elif self.individual.father:
             if not self.father_enabled.get_active() :
-                self.individual.father = None
+                self.zcore.remove_father(self.individual)
             
         if self.edit_mother:            
             if self.mother_enabled.get_active():
-                self.individual.mother = self.edit_mother
+                self.zcore.set_mother(self.individual,self.edit_mother)
             else:
-                self.individual.mother = None
+                self.zcore.remove_mother(self.individual)
         elif self.individual.mother: 
             if not self.mother_enabled.get_active():
-                self.individual.mother = None
+                self.zcore.remove_mother(self.individual)
             
         self.individual.name = self.edit_name.get_text()
         self.individual.firstname = self.edit_firstname.get_text()
@@ -683,7 +683,7 @@ class IndividualView(MaegenStackableWindow):
                 logging.debug("add a widget to navigate to current father " + str(individual.father))
                 self.parent_pane.pack_start(self._create_parent_widget(individual.father))
         else:
-            logging.debug("no widget for father becaue there is no father and not in edit mode")
+            logging.debug("no widget for father because there is no father and not in edit mode")
             
                 
             
@@ -753,7 +753,7 @@ class IndividualView(MaegenStackableWindow):
                 logging.debug("removing parent widget from parent pane...")
                 self.parent_pane.remove(child)
             logging.debug("attemting to add new parent widget...")
-            self._create_parent_pane(self.individual) # DEBUG THIS
+            self._create_parent_pane(self.individual)
             self.parent_pane.show_all()
         else:
             dialog.destroy()
@@ -840,6 +840,76 @@ class IndividualView(MaegenStackableWindow):
                 widget.pack_start(self.mother_enabled, expand=False)
                
         return widget
+    
+    
+    def _create_partner_widget(self, individual):
+        widget = gtk.HBox()
+        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        # Set labels value
+        datestr = ""
+        if individual.birthDate:
+            datestr += str(individual.birthDate.year)
+        
+        if individual.deathDate:
+            datestr += "-" + str(individual.deathDate.year)
+        
+        button.set_text(str(individual), datestr)
+        # Set image
+        image = self._get_gender_image(individual)
+          
+            
+        button.set_image(image)
+        button.set_image_position(gtk.POS_RIGHT)
+                                        
+        button.connect("clicked", self._on_partner_clicked_event, individual)
+        widget.pack_start(button)
+
+               
+        return widget
+    
+    def _create_child_widget(self, individual):
+        widget = gtk.HBox()
+        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        # Set labels value
+        datestr = ""
+        if individual.birthDate:
+            datestr += str(individual.birthDate.year)
+        
+        if individual.deathDate:
+            datestr += "-" + str(individual.deathDate.year)
+        
+        button.set_text(str(individual), datestr)
+        # Set image
+        image = self._get_gender_image(individual)
+          
+            
+        button.set_image(image)
+        button.set_image_position(gtk.POS_RIGHT)
+                                        
+        button.connect("clicked", self._on_child_clicked_event, individual)
+        widget.pack_start(button)
+
+               
+        return widget
+    
+        
+    def _on_child_clicked_event(self, widget, data):
+            # remove  the currentview
+            hildon.WindowStack.get_default().pop_1()
+            # open the clicked parent
+            window = IndividualView(self.zcore,data, self.database_filename)
+            self.program.add_window(window)
+            window.show_all()
+    
+    
+    def _on_partner_clicked_event(self, widget, data):
+            # remove  the currentview
+            hildon.WindowStack.get_default().pop_1()
+            # open the clicked parent
+            window = IndividualView(self.zcore,data, self.database_filename)
+            self.program.add_window(window)
+            window.show_all()
+    
     
     def _on_parent_clicked_event(self, widget, data):
         if self.edit_mode:
@@ -994,13 +1064,16 @@ class IndividualView(MaegenStackableWindow):
             else:
                 other = family.husband            
             union.pack_start(self.justifyLeft(gtk.Label("with")))
-            union.pack_start(self._create_parent_widget(other))            
+            if other:                                
+                union.pack_start(self._create_partner_widget(other))
+            else:
+                union.pack_start(self.justifyLeft(gtk.Label("unknown partner")))            
             one_family_pane.add(union)
             # children
             children = gtk.VBox()
             children.pack_start(self.justifyLeft(gtk.Label("has " + str(len(family.children)) + " child(ren)")))
             for child in family.children:
-                children.pack_start(self._create_parent_widget(child),expand=False)
+                children.pack_start(self._create_child_widget(child),expand=False)
             
             one_family_pane.add(children)
             

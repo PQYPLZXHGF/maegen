@@ -26,6 +26,7 @@ Created on Oct 14, 2011
 
 @author: maemo
 '''
+from exceptions import  *
 
 import logging
 import pickle
@@ -54,7 +55,8 @@ class Maegen(object):
     def __init__(self):
         self._ensure_maegen_conf_store()
         self.database = Database()
-        
+
+       
         
         
     
@@ -100,12 +102,26 @@ class Maegen(object):
     
     def get_families_for(self, individual):
         '''
-        Return all family where thi given individual is a parent.
+        Return all family where the given individual is a parent.
         '''
         def parent_in(individual):
             return lambda x: individual  in [x.husband, x.wife] 
             
         return filter(parent_in(individual), self.database.families)
+    
+    def get_family_with_child(self, individual):
+       '''
+       Return family where given individual is child.
+       Raise MaegenIntegrityException if more than one family are candidate
+       '''
+       result = filter(lambda x: individual in x.children, self.database.families)
+       if len(result) > 1:
+           raise MaegenIntegrityException("individual " + individual + " is child of more than one family")
+       elif len(result) == 1:
+           return result[0]
+       else:
+           return None
+   
     
     def individuals_count(self):
         '''
@@ -161,6 +177,97 @@ class Maegen(object):
         family.children.append(individual)
         individual.father = family.husband
         individual.mother = family.wife
+     
+    def remove_father(self, individual):
+        '''
+        remove the father of an individual.
+        Return the removed father.
+        '''    
+        old = individual.father
+        self.set_father(individual, None)
+        return old
+    
+  
+    def remove_mother(self, individual):
+        '''
+        remove the mother of an individual.
+        Return the removed mother.
+        '''    
+        old = individual.mother
+        self.set_mother(individual, None)
+        return old    
+        
+    
+    def set_father(self, individual, father):
+        '''
+        Give a father to an individual        
+        '''
+        old = individual.father
+        individual.father = father
+        if old:
+            # ensure correctness of database 
+        
+            # remove from the old family
+            family = self.get_family_with_child(individual)
+            if family:
+                if family.husband == old:
+                    family.children.remove(individual)
+        
+        # add in new family
+        family = self.get_family_with_child(individual)
+        if family:
+            # individual is already child of a family
+            if family.husband == None:
+                # promote the father as husband 
+                family.husband = father
+            elif not family.husband == father:
+                raise MaegenIntegrityException(str(individual) + " is already child in a family with an husband, cannot change husband")
+        elif father:
+            #create a new family with fatrher as husband
+            new_family = self.create_new_family(father, None)
+            self.make_child(individual, new_family)
+        elif individual.mother:
+            # create a family with mother as wife
+            new_family = self.create_new_family(None, individual.mother)
+            self.make_child(individual, new_family)
+            
+            
+        return old
+
+    def set_mother(self, individual, mother):
+        '''
+        Give a mother to an individual        
+        '''
+        old = individual.mother
+        individual.mother = mother
+        if old:
+            # ensure correctness of database 
+        
+            # remove from the old family
+            family = self.get_family_with_child(individual)
+            if family:
+                if family.wife == old:
+                    family.children.remove(individual)
+        
+        # add in new family
+        family = self.get_family_with_child(individual)
+        if family:
+            # individual is already child of a family
+            if family.wife == None:
+                # promote the mother as husband 
+                family.wife = mother
+            elif not family.husband == mother:
+                raise MaegenIntegrityException(str(individual) + " is already child in a family with a wife, cannot change wife")
+        elif mother:
+            #create a new family with mother as wife
+            new_family = self.create_new_family(None, mother)
+            self.make_child(individual, new_family)
+        elif individual.father:
+            # create a new family with father ashusband
+            new_family = self.create_new_family(individual.father, None)
+            self.make_child(individual, new_family)
+        return old
+        
     
     def retrieve_all_individuals(self):
         '''
