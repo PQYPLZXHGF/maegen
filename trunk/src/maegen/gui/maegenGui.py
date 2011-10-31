@@ -540,7 +540,7 @@ class DefaultView(MaegenStackableWindow):
             self.refresh()
             new_indi.nickname = nickname.get_text()
             dialog.destroy()
-            window = IndividualView(self.zcore,new_indi, self.database_filename)
+            window = IndividualView(self.zcore,new_indi, self.database_filename,edit_mode=True)
             self.program.add_window(window)
             window.show_all()
         else:
@@ -575,11 +575,16 @@ class DefaultView(MaegenStackableWindow):
         wife_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
         parent_pane_selector.add(hildon.Caption(None,"husband",husband_selector))
         parent_pane_selector.add(hildon.Caption(None,"wife",wife_selector))
-        dialog.vbox.add(parent_pane_selector)
+        dialog.vbox.pack_start(parent_pane_selector,expand=True)
         dialog.show_all()
         resu = dialog.run()
         if resu == gtk.RESPONSE_OK:            
+            model, iter = husband_selector.get_selected(0)
+            husband = model.get(iter,1)[0]        
+            model, iter = wife_selector.get_selected(0)
+            wife = model.get(iter,1)[0]        
             dialog.destroy()
+            self.zcore.create_new_family(husband, wife)
         else:
             dialog.destroy()
 
