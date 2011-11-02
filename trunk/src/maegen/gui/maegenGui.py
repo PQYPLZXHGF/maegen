@@ -457,9 +457,9 @@ class DefaultView(MaegenStackableWindow):
         '''
         Display a selector to view an individual
         '''
-        selector = hildon.TouchSelectorEntry()
+        selector = hildon.TouchSelector()
         model = gtk.ListStore(str, object)
-        for indi in self.zcore.retrieve_all_individuals():
+        for indi in sorted(self.zcore.retrieve_all_individuals(), key=lambda indi : indi.name + indi.firstname):
             model.append([str(indi), indi])   
         selector.append_column(model, gtk.CellRendererText(),text=0)        
         selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
@@ -553,9 +553,8 @@ class DefaultView(MaegenStackableWindow):
         dialog.set_title("New Family")
         
         dialog.add_button("Create", gtk.RESPONSE_OK)
-        parent_pane_selector = gtk.HBox()
-        husband_selector = hildon.TouchSelector()
-        wife_selector = hildon.TouchSelector()
+       
+        selector = hildon.TouchSelector()        
         husband_model = gtk.ListStore(str, object)
         wife_model = gtk.ListStore(str, object)
         logging.debug("creating list for husband selection...")
@@ -569,22 +568,21 @@ class DefaultView(MaegenStackableWindow):
                 husband_model.append([str(indi), indi])
                 wife_model.append([str(indi), indi])
                     
-        wife_selector.append_column(wife_model, gtk.CellRendererText(), text=0)
-        husband_selector.append_column(husband_model, gtk.CellRendererText(), text=0)
-        husband_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
-        wife_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
-        parent_pane_selector.add(hildon.Caption(None,"husband",husband_selector))
-        parent_pane_selector.add(hildon.Caption(None,"wife",wife_selector))
-        dialog.vbox.pack_start(parent_pane_selector,expand=True)
+        selector.append_column(husband_model, gtk.CellRendererText(), text=0)
+        selector.append_column(wife_model, gtk.CellRendererText(), text=0)
+        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        dialog.vbox.pack_start(hildon.Caption(None, "Spouses" ,selector),expand=True)
         dialog.show_all()
         resu = dialog.run()
         if resu == gtk.RESPONSE_OK:            
-            model, iter = husband_selector.get_selected(0)
+            model, iter = selector.get_selected(0)
             husband = model.get(iter,1)[0]        
-            model, iter = wife_selector.get_selected(0)
+            model, iter = selector.get_selected(1)
             wife = model.get(iter,1)[0]        
             dialog.destroy()
             self.zcore.create_new_family(husband, wife)
+            self.zcore.save_database(self.database_filename)
+            self.refresh()
         else:
             dialog.destroy()
 
