@@ -427,6 +427,11 @@ class DefaultView(MaegenStackableWindow):
         openMenuBtn.connect("clicked", self.on_search_menu_clicked, None)
         menu.append(openMenuBtn) 
         
+        exportMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        exportMenuBtn.set_label("Export");
+        exportMenuBtn.connect("clicked", self.on_export_menu_clicked, None)
+        menu.append(exportMenuBtn) 
+        
         aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
         aboutMenuBtn.set_label("About");
         aboutMenuBtn.connect("clicked", show_about_dialog, None)
@@ -446,6 +451,9 @@ class DefaultView(MaegenStackableWindow):
         self.branche_count_label.set_text(str(self.zcore.branches_count()))
         self.name_count_label.set_text(str(self.zcore.names_count()))
 
+
+    def on_export_menu_clicked(self, widget, data):
+        not_yet_implemented()
 
     def on_browse_menu_clicked(self, widget, data):
         not_yet_implemented()
@@ -742,7 +750,7 @@ class IndividualView(MaegenStackableWindow):
             logging.debug("no widget for mother becaue there is no mother and not in edit mode")
 
     def _open_dialog_to_select_parent(self, widget, parent):
-        selector = hildon.TouchSelectorEntry()
+        selector = hildon.TouchSelector()
         model = gtk.ListStore(str, object)
         logging.debug("creating list for parent selection...")
         for indi in self.zcore.retrieve_all_individuals():
