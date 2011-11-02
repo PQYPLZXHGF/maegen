@@ -54,8 +54,47 @@ class Maegen(object):
     
     def __init__(self):
         self._ensure_maegen_conf_store()
-        self.database = Database()
+        settings = None
+        self.database = None
+        self.load_settings()
+        self.apply_settings()
 
+    def get_maegen_settings_file(self):
+        storage = get_maegen_storage_dir()
+        storage = os.path.join(storage, "settings.pickle")
+        return storage
+
+    def load_settings(self):
+        '''
+        load the saved settings
+        '''
+        self._ensure_maegen_conf_store()
+        storage = self.get_maegen_settings_file()
+        try:           
+            file = open(storage,'rb')
+            self.settings = pickle.load(file)
+            file.close()
+        except IOError, EOFError:
+            logging.warning("failed to load the settings")
+            self.settings  = Settings()
+            
+    
+    def save_settings(self):
+        '''
+        save the current settings
+        '''
+        self._ensure_maegen_conf_store()
+        storage = self.get_maegen_settings_file()
+        try:           
+            file = open(storage,'wb')
+            pickle.dump(self.settings,file)
+            file.close()
+        except IOError:
+            logging.warning("failed to save the settings")
+
+    
+    def apply_settings(self):
+        pass
        
         
         
@@ -308,6 +347,16 @@ class Maegen(object):
         '''
         self.database = Database()
         self._save_database(database_file)
+        
+class Settings():
+    '''
+    Represents the settings for Maegen
+    '''
+   
+    def __init__(self):
+        self.edit_new_individual = False
+
+    
         
 '''
 Model of genealogical data

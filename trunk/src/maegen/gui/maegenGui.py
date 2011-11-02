@@ -540,7 +540,7 @@ class DefaultView(MaegenStackableWindow):
             self.refresh()
             new_indi.nickname = nickname.get_text()
             dialog.destroy()
-            window = IndividualView(self.zcore,new_indi, self.database_filename,edit_mode=True)
+            window = IndividualView(self.zcore,new_indi, self.database_filename,edit_mode=self.zcore.settings.edit_new_individual)
             self.program.add_window(window)
             window.show_all()
         else:
