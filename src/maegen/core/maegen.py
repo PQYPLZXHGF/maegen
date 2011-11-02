@@ -362,6 +362,8 @@ class Settings():
 Model of genealogical data
 '''
 
+# TODO move model into a python miodule
+
 class Database(object):
     """
     genealogical data consist in a set of individuals related by a set of families
