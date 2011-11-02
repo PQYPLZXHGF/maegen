@@ -29,9 +29,9 @@ Created on Nov 2, 2011
 
 from string import Template
 
-#from ..common import version 
+from ..common import version 
 
-#version.getInstance().submitRevision("$Revision: 155 $")
+version.getInstance().submitRevision("$Revision: 155 $")
 
 class GedcomWriter():
     '''
@@ -44,6 +44,10 @@ class GedcomWriter():
             - database : the maegen database
         '''
         self.database = database
+        self.individual_count = 0
+        self.family_count = 0
+        self.individual_dic = {}
+        self.family_dic = {}
     
     
     
@@ -75,14 +79,17 @@ class GedcomWriter():
 """ 
         # TODO replace maemo by the user name
         return Template(submitter).substitute(submitter="maemo")
+
+    def _create_individuals(self, indent=0):
+        return ""
+    
+    def _create_families(self):
+        return ""
         
     def _create_record(self):
-        # TODO 
-        return ""
+        return self._create_individuals()+ self._create_families()
     
     def _create_trlr(self):
         return "0 TRLR"
     
     
-if __name__ == '__main__':  
-    print GedcomWriter(None).export()

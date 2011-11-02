@@ -453,7 +453,26 @@ class DefaultView(MaegenStackableWindow):
 
 
     def on_export_menu_clicked(self, widget, data):
-        not_yet_implemented()
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("Gedcom for database")        
+        dialog.add_button("Ok", gtk.RESPONSE_OK)
+        gedcom = hildon.TextView()
+        gedcom_source = self.zcore.export_to_gedcom()
+        buffer = gtk.TextBuffer()
+        buffer.set_text(gedcom_source)        
+        gedcom.set_buffer(buffer)
+        gedcom.set_property('editable', False)
+        
+        pannable_area = hildon.PannableArea()
+        pannable_area.set_property('mov_mode',hildon.MOVEMENT_MODE_BOTH)
+        pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
+        pannable_area.add_with_viewport(gedcom)
+        dialog.vbox.add(pannable_area)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+
 
     def on_browse_menu_clicked(self, widget, data):
         not_yet_implemented()

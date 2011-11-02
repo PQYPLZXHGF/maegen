@@ -27,11 +27,13 @@ Created on Oct 14, 2011
 @author: maemo
 '''
 from exceptions import  *
+from gedcom import *
 
 import logging
 import pickle
 import os
 import os.path
+
 
 from ..common import version 
 
@@ -138,6 +140,12 @@ class Maegen(object):
     '''
     Facade function
     '''
+    
+    def export_to_gedcom(self):
+        '''
+        Return a gedcom version of the database
+        '''
+        return GedcomWriter(self.database).export()
     
     def get_families_for(self, individual):
         '''
