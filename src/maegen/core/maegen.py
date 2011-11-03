@@ -141,11 +141,20 @@ class Maegen(object):
     Facade function
     '''
     
-    def export_to_gedcom(self):
+    def export_to_gedcom(self, filepath=None):
         '''
-        Return a gedcom version of the database
+        Return the gedcom for current database
+        Parameter:
+          - filepath the file were the gedcom is written if supplied
         '''
-        return GedcomWriter(self.database).export()
+        gedcom_str =  GedcomWriter(self.database).export()
+        if filepath:
+            f = open(filepath,'w')
+            try:
+                f.write(gedcom_str)
+            finally:
+                f.close()
+        return gedcom_str
     
     def get_families_for(self, individual):
         '''
