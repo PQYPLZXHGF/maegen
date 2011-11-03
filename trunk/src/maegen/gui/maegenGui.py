@@ -455,8 +455,8 @@ class DefaultView(MaegenStackableWindow):
     def on_export_menu_clicked(self, widget, data):
         dialog = gtk.Dialog()
         dialog.set_transient_for(self)
-        dialog.set_title("Gedcom for database")        
-        dialog.add_button("Ok", gtk.RESPONSE_OK)
+        dialog.set_title("Gedcom for database") 
+        dialog.add_button("Save...", -1000)            
         gedcom = hildon.TextView()
         gedcom_source = self.zcore.export_to_gedcom()
         buffer = gtk.TextBuffer()
@@ -470,17 +470,21 @@ class DefaultView(MaegenStackableWindow):
         pannable_area.add_with_viewport(gedcom)
         dialog.vbox.add(pannable_area)
         dialog.show_all()
-        dialog.run()
+        response = dialog.run()
+        if response == -1000:
+            dialog.destroy()
+            fc = gobject.new(hildon.FileChooserDialog, title="Enter gedcom file", action=gtk.FILE_CHOOSER_ACTION_SAVE)
+            fc.set_property('show-files',True)    
+            fc.set_do_overwrite_confirmation(True)                                        
+            if fc.run()==gtk.RESPONSE_OK: 
+                filepath = fc.get_filename()                                
+                self.zcore.export_to_gedcom(filepath + ".ged")            
+            fc.destroy()
+
         dialog.destroy()
 
 
-    def on_browse_menu_clicked(self, widget, data):
-        not_yet_implemented()
-
-
-           
-        
-    def on_search_menu_clicked(self, widget, data):
+    def on_browse_menu_clicked(self, widget, data):        
         '''
         Display a selector to view an individual
         '''
@@ -509,7 +513,13 @@ class DefaultView(MaegenStackableWindow):
             self.program.add_window(window)
             window.show_all()
         else:
-            dialog.destroy()
+            dialog.destroy()        
+
+
+           
+        
+    def on_search_menu_clicked(self, widget, data):
+        not_yet_implemented()
 
     def init_center_view(self, centerview):
        line = gtk.HBox()
