@@ -32,7 +32,7 @@ ez_setup.use_setuptools()
 
 from setuptools import setup, find_packages
 setup(name='maegen',
-      version='0.1.0-SNAPSHOT',
+      version='0.1.0',
       package_dir = {'': 'src'},
       packages=find_packages(where='src'),               
       scripts=['scripts/maegen'],
