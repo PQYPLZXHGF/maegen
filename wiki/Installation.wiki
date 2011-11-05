@@ -6,7 +6,7 @@ you can install Maegen from source or from an archive. The best way for a Maemo 
 
 = From source =
 
-checkout source from this page then run as root from the root project tree
+checkout source from [http://code.google.com/p/maegen/source/checkout this page] then run as root from the root project tree
 `python setup.py install`
 
 = From archive =
