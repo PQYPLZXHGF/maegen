@@ -160,7 +160,7 @@ class Maegen(object):
         '''
         Return all family for given father and mother
         '''
-        return filter(lambda fam: fam.husband == father and fam.mother == mother, self.database.families)
+        return filter(lambda fam: fam.husband == father and fam.wife == mother, self.database.families)
     
     def get_families_for(self, individual):
         '''
@@ -269,7 +269,7 @@ class Maegen(object):
         individual.fathe = father
         individual.mother = mother
         
-        if old_father or old._mother:
+        if old_father or old_mother:
             # ensure correctness of database 
         
             # remove from the old family
