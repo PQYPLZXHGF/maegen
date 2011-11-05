@@ -692,23 +692,28 @@ class IndividualView(MaegenStackableWindow):
             
     def on_save_clicked_event(self, widget, data):
         
-        if self.edit_father:
-            if self.father_enabled.get_active():
-                self.zcore.set_father(self.individual,self.edit_father)
-            else:
-                self.zcore.remove_father(self.individual)                        
-        elif self.individual.father:
-            if not self.father_enabled.get_active() :
-                self.zcore.remove_father(self.individual)
+               
+        if self.edit_father and self.edit_mother:
+            if self.father_enabled.get_active() and self.mother_enabled.get_active():
+              pass         
+        else:    
+            if self.edit_father:
+                if self.father_enabled.get_active():
+                    self.zcore.set_father(self.individual,self.edit_father)
+                else:
+                    self.zcore.remove_father(self.individual)                        
+            elif self.individual.father:
+                if not self.father_enabled.get_active() :
+                    self.zcore.remove_father(self.individual)
             
-        if self.edit_mother:            
-            if self.mother_enabled.get_active():
-                self.zcore.set_mother(self.individual,self.edit_mother)
-            else:
-                self.zcore.remove_mother(self.individual)
-        elif self.individual.mother: 
-            if not self.mother_enabled.get_active():
-                self.zcore.remove_mother(self.individual)
+            if self.edit_mother:            
+                if self.mother_enabled.get_active():
+                    self.zcore.set_mother(self.individual,self.edit_mother)
+                else:
+                    self.zcore.remove_mother(self.individual)
+            elif self.individual.mother: 
+                if not self.mother_enabled.get_active():
+                    self.zcore.remove_mother(self.individual)
             
         self.individual.name = self.edit_name.get_text()
         self.individual.firstname = self.edit_firstname.get_text()
