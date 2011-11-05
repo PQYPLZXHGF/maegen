@@ -156,14 +156,20 @@ class Maegen(object):
                 f.close()
         return gedcom_str
     
+    def get_families_for_parents(self, father, mother):
+        '''
+        Return all family for given father and mother
+        '''
+        return filter(lambda fam: fam.husband == father and fam.mother == mother, self.database.families)
+    
     def get_families_for(self, individual):
         '''
         Return all family where the given individual is a parent.
         '''
-        def parent_in(individual):
-            return lambda x: individual  in [x.husband, x.wife] 
+        def is_parent_in(individual):
+            return lambda fam: individual  in [fam.husband, fam.wife] 
             
-        return filter(parent_in(individual), self.database.families)
+        return filter(is_parent_in(individual), self.database.families)
     
     def get_family_with_child(self, individual):
        '''
@@ -172,6 +178,7 @@ class Maegen(object):
        '''
        result = filter(lambda x: individual in x.children, self.database.families)
        if len(result) > 1:
+           # since we only trace genetic filiation at most ONE family is possible       
            raise MaegenIntegrityException("individual " + individual + " is child of more than one family")
        elif len(result) == 1:
            return result[0]
@@ -252,7 +259,36 @@ class Maegen(object):
         old = individual.mother
         self.set_mother(individual, None)
         return old    
+
+    def set_parents(self, individual, father, mother):
+        '''
+        Make an individual children of a given father and mother
+        '''    
+        old_father = individual.father
+        old_mother = individual.mother
+        individual.fathe = father
+        individual.mother = mother
         
+        if old_father or old._mother:
+            # ensure correctness of database 
+        
+            # remove from the old family
+            family = self.get_family_with_child(individual)
+            if family:
+                if family.husband == old_father or family.wife == old_mother:
+                    family.children.remove(individual)
+                
+        # add in a family
+        fam_list = self.get_families_for_parents(father, mother)
+        if len(fam_list) == 1:
+            # use this family
+            fam = fam_list[0]
+            self.make_child(individual, fam)
+        else:
+            # create a new one
+            new_family = self.create_new_family(father,mother)
+            self.make_child(individual, new_family)
+
     
     def set_father(self, individual, father):
         '''
