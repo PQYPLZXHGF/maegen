@@ -5,4 +5,8 @@ Type=Application
 Name=Maegen
 Exec=/usr/bin/maegen
 Icon=maegen
+Comment=Horaires de rer
+X-Icon-path=/usr/share/icons
+X-Window-Icon=maegen
+
 
