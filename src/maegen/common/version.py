@@ -27,7 +27,7 @@ Created on Oct 14, 2011
 @author: maemo
 '''
 
-CURRENT_VERSION = "0.1.0-SNAPSHOT"  # this must be modified before any release
+CURRENT_VERSION = "0.1.0"  # this must be modified before any release
 
 def getInstance():
     return SINGLETON
