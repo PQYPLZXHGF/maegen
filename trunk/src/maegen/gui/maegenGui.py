@@ -519,7 +519,20 @@ class DefaultView(MaegenStackableWindow):
            
         
     def on_search_menu_clicked(self, widget, data):
-        not_yet_implemented()
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("Search") 
+        dialog.add_button("Search", gtk.RESPONSE_OK) 
+        entry = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        dialog.vbox.add(entry) 
+        dialog.show_all()
+        response = dialog.run()        
+        if response == gtk.RESPONSE_OK:            
+            dialog.destroy()    
+            not_yet_implemented()
+        else:
+            dialog.destroy()        
+          
 
     def init_center_view(self, centerview):
        line = gtk.HBox()
