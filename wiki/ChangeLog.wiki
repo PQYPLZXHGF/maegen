@@ -1,5 +1,9 @@
-#summary One-sentence summary of this page.
+#change log of the software
 
 = 0.1.0 =
 
-first release
+ # individual creation
+ # family creation
+ # parent linking
+ # navigation from individual to parent, spouse and children
+ # GEDCOM export
