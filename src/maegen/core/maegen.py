@@ -200,17 +200,17 @@ class Maegen(object):
     
     def branches_count(self):
         '''
-        Return the count of branches (tree) in the database
+        Return the count of branches (tree with ancestor as root) in the database
         '''
-        logging.warning("not yet implemented")
-        return 0
+        indi_without_parents = filter(lambda x: x.father is None and x.mother is None, self.database.individuals)
+        return len(indi_without_parents)
     
     def names_count(self):
         '''
         return the count of patronymic name in the database
         '''
-        logging.warning("not yet implemented")
-        return 0
+        
+        return len(set(map(lambda indi: indi.name.upper(),self.database.individuals)))
 
     def create_new_individual(self, name="inconnu", firstname="inconnu"):
         '''
