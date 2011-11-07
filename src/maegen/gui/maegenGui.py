@@ -398,6 +398,118 @@ class MaegenStackableWindow(hildon.StackableWindow):
           leftAlign.add(widget)
           return leftAlign
       
+
+class IndividualListView(MaegenStackableWindow):
+    '''
+    This pane show individual list. This is a read view.
+    '''
+    
+    def __init__(self, zcore, database_filename):
+        
+        self.zcore = zcore
+        self.database_filename = database_filename
+        MaegenStackableWindow.__init__(self, "Individuals list")
+        
+         # add app menu
+        
+        menu = hildon.AppMenu()
+        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
+        
+        menu.show_all()
+        self.set_app_menu(menu)
+
+    def init_center_view(self, centerview):
+        SEX_PICTURE_COLUMN_INDEX = 0
+        FIRSTNAME_COLUMN_INDEX = 1
+        NAME_COLUMN_INDEX = 2
+        NICKNAME_COLUMN_INDEX = 3
+        YEAR_BIRTH_DEATH_COLUMN_INDEX = 4
+        INDIVIDUAL_OBJECT_COLUMN_INDEX = 5
+        self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str, str, object)
+        for indi in self.zcore.retrieve_all_individuals():
+            
+            if indi.gender == "male":
+                sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
+            elif indi.gender == "female":
+                sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
+            else:
+                sex_picture = None
+                                
+
+            year_birth_death = ""
+            if indi.birthDate:
+                year_birth_death += str(indi.birthDate.year)
+        
+            if indi.deathDate:
+                year_birth_death += "-" + str(indi.deathDate.year)
+                
+            self.model.append([sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi])   
+        
+        self.view = gtk.TreeView(self.model)     
+        self.view.set_headers_visible(True)           
+        self.view.set_headers_clickable(True)
+        
+        column = gtk.TreeViewColumn("gender")
+        column_renderer = gtk.CellRendererPixbuf()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, pixbuf=SEX_PICTURE_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("firstname")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=FIRSTNAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("name")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("nick")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NICKNAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("birth-death")
+        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=YEAR_BIRTH_DEATH_COLUMN_INDEX) 
+        self.view.append_column(column)
+                
+
+        self.view.connect("row-activated", self._on_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
+        
+
+        
+        
+        centerview.add(self.view)
+        
+
+    def _on_row_activated(self,  treeview, path, view_column,  user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi, = store.get(iter,user_data)
+        # check if the activation come from a nice icon
+        window = IndividualView(self.zcore, indi, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+        
+      
       
 class DefaultView(MaegenStackableWindow):
     '''
@@ -417,11 +529,7 @@ class DefaultView(MaegenStackableWindow):
         
         menu = hildon.AppMenu()
                                                                                                                                                           
-        newMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
-        newMenuBtn.set_label("Browse");
-        newMenuBtn.connect("clicked", self.on_browse_menu_clicked, None)
-        menu.append(newMenuBtn)   
-        
+       
         openMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
         openMenuBtn.set_label("Search");
         openMenuBtn.connect("clicked", self.on_search_menu_clicked, None)
@@ -446,10 +554,10 @@ class DefaultView(MaegenStackableWindow):
 
 
     def refresh(self):
-        self.individual_count_label.set_text(str(self.zcore.individuals_count()))
-        self.family_count_label.set_text(str(self.zcore.families_count()))
-        self.branche_count_label.set_text(str(self.zcore.branches_count()))
-        self.name_count_label.set_text(str(self.zcore.names_count()))
+        self.individual_count_label.set_value(str(self.zcore.individuals_count()))
+        self.family_count_label.set_value(str(self.zcore.families_count()))
+        self.branche_count_label.set_value(str(self.zcore.branches_count()))
+        self.name_count_label.set_value(str(self.zcore.names_count()))
 
 
     def on_export_menu_clicked(self, widget, data):
@@ -483,37 +591,7 @@ class DefaultView(MaegenStackableWindow):
 
         dialog.destroy()
 
-
-    def on_browse_menu_clicked(self, widget, data):        
-        '''
-        Display a selector to view an individual
-        '''
-        selector = hildon.TouchSelector()
-        model = gtk.ListStore(str, object)
-        for indi in sorted(self.zcore.retrieve_all_individuals(), key=lambda indi : indi.name + indi.firstname):
-            model.append([str(indi), indi])   
-        selector.append_column(model, gtk.CellRendererText(),text=0)        
-        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
- 
-
-        dialog = hildon.PickerDialog(self) 
-        dialog.set_transient_for(self) 
-        dialog.set_title("Select an individual")
-        dialog.set_done_label("View") 
-        dialog.set_selector(selector)
-        
-        dialog.show_all()         
-        self.selected_individual = None
-        response = dialog.run()
-        if response == gtk.RESPONSE_OK:
-            model, iter = selector.get_selected(0)
-            indi = model.get(iter,1)[0]        
-            dialog.destroy()    
-            window = IndividualView(self.zcore,indi, self.database_filename)
-            self.program.add_window(window)
-            window.show_all()
-        else:
-            dialog.destroy()        
+   
 
 
            
@@ -532,34 +610,54 @@ class DefaultView(MaegenStackableWindow):
             not_yet_implemented()
         else:
             dialog.destroy()        
-          
+
+
+    def _on_btn_individual_clicked_event(self, widget, data):
+         window = IndividualListView(self.zcore, self.database_filename)
+         self.program.add_window(window)
+         window.show_all()
+         
+    def _on_btn_family_clicked_event(self, widget, data):
+        not_yet_implemented()
+
+    def _on_btn_branch_clicked_event(self, widget, data):
+        not_yet_implemented()
+
+    def _on_btn_name_clicked_event(self, widget, data):
+        not_yet_implemented()
 
     def init_center_view(self, centerview):
-       line = gtk.HBox()
-       line.pack_start(self.justifyLeft(gtk.Label("Individual")))
-       self.individual_count_label = gtk.Label(self.zcore.individuals_count())
-       line.pack_start(self.individual_count_label)
-       centerview.pack_start(line)
+       button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
+       button.set_title("Individual")
+       button.set_value(str(self.zcore.individuals_count()))
+       button.connect("clicked", self._on_btn_individual_clicked_event, None)
+       centerview.pack_start(button, expand=False)
+       
+       self.individual_count_label = button
 
-       line = gtk.HBox()
-       line.pack_start(self.justifyLeft(gtk.Label("Family")))
-       self.family_count_label = gtk.Label(self.zcore.families_count())
-       line.pack_start(self.family_count_label)       
-       centerview.pack_start(line)
+       button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
+       button.set_title("Family")
+       button.set_value(str(self.zcore.families_count()))
+       button.connect("clicked", self._on_btn_family_clicked_event, None)
+       centerview.pack_start(button, expand=False)
+       
+       self.family_count_label= button
         
-       line = gtk.HBox()
-       line.pack_start(self.justifyLeft(gtk.Label("Branch")))
-       self.branche_count_label = gtk.Label(self.zcore.branches_count())
-       line.pack_start(self.branche_count_label)       
-       centerview.pack_start(line)
+       button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
+       button.set_title("Branch")
+       button.set_value(str(self.zcore.branches_count()))        
+       button.connect("clicked", self._on_btn_branch_clicked_event, None)       
+       centerview.pack_start(button, expand=False)
 
-       line = gtk.HBox()
-       line.pack_start(self.justifyLeft(gtk.Label("Name")))
-       self.name_count_label = gtk.Label(self.zcore.names_count())
-       line.pack_start(self.name_count_label)       
-       centerview.pack_start(line)
+       self.branche_count_label = button
 
-    
+       button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
+       button.set_title("Name")
+       button.set_value(str(self.zcore.names_count()))            
+       button.connect("clicked", self._on_btn_name_clicked_event, None)       
+       centerview.pack_start(button, expand=False)
+
+       self.name_count_label = button
     
     def init_bottom_button(self, bottomButtons):
         add_indi_btn = self.create_button("Add Individual")
@@ -883,9 +981,9 @@ class IndividualView(MaegenStackableWindow):
                 image = gtk.Image()
                 image.set_from_pixbuf(pixbuf)
             else:
-                image = gtk.image_new_from_stock(gtk.STOCK_INFO, gtk.ICON_SIZE_BUTTON)
+                image = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_BUTTON)
         else:
-            image = gtk.image_new_from_stock(gtk.STOCK_INFO, gtk.ICON_SIZE_BUTTON)
+            image = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_BUTTON)
         return image
 
 
