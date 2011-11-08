@@ -474,7 +474,7 @@ class IndividualListView(MaegenStackableWindow):
         self.view.set_headers_visible(True)           
         self.view.set_headers_clickable(True)
         
-        column = gtk.TreeViewColumn()
+        column = gtk.TreeViewColumn("S")
         column_renderer = gtk.CellRendererPixbuf()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, pixbuf=SEX_PICTURE_COLUMN_INDEX) 
