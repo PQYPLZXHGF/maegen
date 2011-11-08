@@ -113,6 +113,26 @@ def _call_handled_method(method, *arg):
             # this is an unkown exception
             self._default_exception_handler()
 
+
+
+def _get_gender_image(individual):
+    '''
+    Return a gtk.Image according to gender of given individual.
+    '''
+    if individual.gender:
+        if individual.gender == "male":
+            pixbuf = gtk.gdk.pixbuf_new_from_file("male.png")
+            image = gtk.Image()
+            image.set_from_pixbuf(pixbuf)
+        elif individual.gender == "female":
+            pixbuf = gtk.gdk.pixbuf_new_from_file("female.png")
+            image = gtk.Image()
+            image.set_from_pixbuf(pixbuf)
+        else:
+            image = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_BUTTON)
+    else:
+            image = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_BUTTON)
+    return image
       
 
 class MaegenGui(object):
@@ -454,7 +474,7 @@ class IndividualListView(MaegenStackableWindow):
         self.view.set_headers_visible(True)           
         self.view.set_headers_clickable(True)
         
-        column = gtk.TreeViewColumn("gender")
+        column = gtk.TreeViewColumn()
         column_renderer = gtk.CellRendererPixbuf()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, pixbuf=SEX_PICTURE_COLUMN_INDEX) 
@@ -517,6 +537,141 @@ class IndividualListView(MaegenStackableWindow):
         window = IndividualView(self.zcore, indi, self.database_filename, False)
         self.program.add_window(window)
         window.show_all()
+
+
+class BranchListView(MaegenStackableWindow):
+    '''
+    This pane show branches. This is a read view.
+    '''
+    
+    def __init__(self, zcore, database_filename):
+        
+        self.zcore = zcore
+        self.database_filename = database_filename
+        MaegenStackableWindow.__init__(self, "Branch list")
+        
+         # add app menu
+        
+        menu = hildon.AppMenu()
+        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
+        
+        menu.show_all()
+        self.set_app_menu(menu)
+
+    def init_center_view(self, centerview):
+        LEVEL_COLUMN_INDEX = 0
+        SEX_PICTURE_COLUMN_INDEX = 1
+        FIRSTNAME_COLUMN_INDEX = 2
+        NAME_COLUMN_INDEX = 3
+        NICKNAME_COLUMN_INDEX = 4
+        YEAR_BIRTH_DEATH_COLUMN_INDEX = 5
+        OOCUPATION_COLUMN_INDEX = 6
+        INDIVIDUAL_OBJECT_COLUMN_INDEX = 7
+        self.model = gtk.TreeStore(str, gtk.gdk.Pixbuf, str, str, str, str, str, object)
+        for indi in self.zcore.retrieve_branches():
+            
+            self._add_indivdual_in_tree(None, indi, level=1)
+            # TODO add children
+               
+        
+        self.view = gtk.TreeView(self.model)     
+        self.view.set_headers_visible(True)           
+        self.view.set_headers_clickable(True)
+        
+        column = gtk.TreeViewColumn("Level")
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=LEVEL_COLUMN_INDEX) 
+        self.view.append_column(column) 
+        
+        
+        column = gtk.TreeViewColumn("S")
+        column_renderer = gtk.CellRendererPixbuf()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, pixbuf=SEX_PICTURE_COLUMN_INDEX) 
+        self.view.append_column(column)    
+        
+        column = gtk.TreeViewColumn("firstname")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=FIRSTNAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("name")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("nick")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NICKNAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("birth-death")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=YEAR_BIRTH_DEATH_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+        column = gtk.TreeViewColumn("occupation")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=OOCUPATION_COLUMN_INDEX) 
+        self.view.append_column(column)
+                
+
+        self.view.connect("row-activated", self._on_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
+        
+
+        
+        
+        centerview.add(self.view)
+        
+
+    def _on_row_activated(self,  treeview, path, view_column,  user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi, = store.get(iter,user_data)                 
+        hildon.WindowStack.get_default().pop_1()     
+        window = IndividualView(self.zcore, indi, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+
+    def _add_indivdual_in_tree(self, parent, indi, level=1):
+        if indi.gender == "male":
+            sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
+        elif indi.gender == "female":
+            sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
+        else:
+            sex_picture = None
+        year_birth_death = ""
+        if indi.birthDate:
+            year_birth_death += str(indi.birthDate.year)
+        if indi.deathDate:
+            year_birth_death += "-" + str(indi.deathDate.year)
+        parent_iter = self.model.append(parent, [str(level), sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi.occupation, indi])
+        # reccursivly add children
+        for family in self.zcore.get_families_for(indi):
+            for child in family.children:
+                self._add_indivdual_in_tree(parent_iter, child, level+1)
+        return parent_iter
+
         
 
 class FamilyListView(MaegenStackableWindow):
@@ -585,7 +740,7 @@ class FamilyListView(MaegenStackableWindow):
         self.view.set_headers_visible(True)           
         self.view.set_headers_clickable(True)
         
-        column = gtk.TreeViewColumn("gender")
+        column = gtk.TreeViewColumn("S")
         column_renderer = gtk.CellRendererPixbuf()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, pixbuf=HUSB_SEX_PICTURE_COLUMN_INDEX) 
@@ -610,7 +765,7 @@ class FamilyListView(MaegenStackableWindow):
 
 
 
-        column = gtk.TreeViewColumn("gender")
+        column = gtk.TreeViewColumn("S")
         column_renderer = gtk.CellRendererPixbuf()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, pixbuf=WIFE_SEX_PICTURE_COLUMN_INDEX) 
@@ -646,12 +801,11 @@ class FamilyListView(MaegenStackableWindow):
     def _on_row_activated(self,  treeview, path, view_column,  user_data):
         store = treeview.get_model()
         iter = store.get_iter(path)
-        indi, = store.get(iter,user_data)
-        # check if the activation come from a nice icon
-        not_yet_implemented()
-#        window = FamilyView(self.zcore, indi, self.database_filename, False)
-#        self.program.add_window(window)
-#        window.show_all()
+        family, = store.get(iter,user_data)
+        # check if the activation come from a nice icon        
+        window = FamilyView(self.zcore, family, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
 
       
       
@@ -767,7 +921,9 @@ class DefaultView(MaegenStackableWindow):
          window.show_all()
 
     def _on_btn_branch_clicked_event(self, widget, data):
-        not_yet_implemented()
+        window = BranchListView(self.zcore, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
 
     def _on_btn_name_clicked_event(self, widget, data):
          window = NameListView(self.zcore, self.database_filename)
@@ -883,10 +1039,289 @@ class DefaultView(MaegenStackableWindow):
             dialog.destroy()
 
 
+class FamilyView(MaegenStackableWindow):
+    '''
+    This pane show details of a given family
+    '''
+    
+    def __init__(self, zcore, family, database_filename, edit_mode=False):
+        self.zcore = zcore
+        self.database_filename = database_filename
+        self.family = family
+        self.edit_mode = edit_mode
+        self.edit_husband = None
+        self.edit_wife = None
+        MaegenStackableWindow.__init__(self, "Family details")
+
+                # add app menu
+        
+        menu = hildon.AppMenu()
+                                                                                                                                                          
+        if not self.edit_mode:
+            editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+            editBtn.set_label("Edit");
+            editBtn.connect("clicked", self._on_edit_menu_clicked, None)
+            menu.append(editBtn)   
+        
+
+        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
+        
+        
+        
+        menu.show_all()
+        self.set_app_menu(menu)  
+
+
+    def on_save_clicked_event(self, widget, data):
+        not_yet_implemented()
+        
+    def on_cancel_clicked_event(self, widget, data):
+        self.pop_and_show_family()
+
+
+    def init_bottom_button(self, bottomButtons):
+        logging.debug("init_bottom_button for FAmilyView...")
+        if self.edit_mode: 
+           logging.debug("in edit mode")
+           save_btn = self.create_button("Save")
+           save_btn.connect("clicked", self.on_save_clicked_event, None)
+           self.add_button(save_btn)
+        
+           cancel_btn = self.create_button("Cancel")
+           cancel_btn.connect("clicked", self.on_cancel_clicked_event, None)
+           self.add_button(cancel_btn)
+        else:
+            logging.debug("not in edit mode, NO bottom button")
+
+
+    def pop_and_show_family(self):
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = FamilyView(self.zcore, self.family,self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_edit_menu_clicked(self, widget, data):
+        # remove  the currentview
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = FamilyView(self.zcore,self.family, self.database_filename, True)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_parent_clicked_event(self, widget, data):
+        hildon.WindowStack.get_default().pop_1()
+        indi = data     
+        window = IndividualView(self.zcore, indi, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+        
+    def _create_parent_widget(self, individual):
+        widget = gtk.HBox()
+        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        # Set labels value
+        datestr = ""
+        if individual.birthDate:
+            datestr += str(individual.birthDate.year)
+        
+        if individual.deathDate:
+            datestr += "-" + str(individual.deathDate.year)
+        
+        button.set_text(str(individual), datestr)
+        # Set image
+        image = _get_gender_image(individual)
+          
+            
+        button.set_image(image)
+        button.set_image_position(gtk.POS_RIGHT)
+                                        
+        button.connect("clicked", self._on_parent_clicked_event, individual)
+        widget.pack_start(button)
+        if self.edit_mode:
+            pass
+#            if individual == self.individual.father and not self.edit_father:
+#                self.edit_father = None
+#            elif  individual == self.individual.mother and not self.edit_mother:
+#                self.edit_mother= None
+#            elif individual == self.edit_father:
+#                pass
+#            elif individual == self.edit_mother:
+#                pass
+#            else:
+#                logging.error("unexpected individual parameter " + str(individual))        
+#                   
+#            if individual == self.individual.father or individual == self.edit_father:                
+#                self.father_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+#                self.father_enabled.set_label("enabled")
+#                self.father_enabled.set_active(True)
+#                widget.pack_start(self.father_enabled, expand=False)
+#            if individual == self.individual.mother or individual == self.edit_mother:                
+#                self.mother_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+#                self.mother_enabled.set_label("enabled")
+#                self.mother_enabled.set_active(True)
+#                widget.pack_start(self.mother_enabled, expand=False)
+               
+        return widget
+
+
+    def create_spouses_pane(self):
+        '''
+        Create a widget containing spouses
+        '''
+        spouses = gtk.HBox()
+        
+        if self.family.husband:
+            spouses.pack_start(self._create_parent_widget(self.family.husband))
+        if self.family.wife:
+            spouses.pack_start(self._create_parent_widget(self.family.wife))
+        
+        return spouses
+    
+    def create_spouses_status_pane(self):
+        '''
+        Ceate a widget containing spouses status e.g. marriage and divorce information.
+        '''
+        status = gtk.VBox()
+        
+        marriage_state = "no mention"
+        if self.family.married:
+            marriage_state = "married"
+            if self.family.married_date:
+                marriage_state += " on " + str(self.family.married_date)
+            if self.family.married_place:
+                marriage_state += " at " + self.family.married_place
+            
+            
+        status.pack_start(self.justifyLeft(gtk.Label("Marriage : " + marriage_state)))
+        divorced_state = "not divorced"
+        if self.family.divorced:
+            divorced_state = "Divorced"
+            if self.family.divorced_date:
+                divorced_state += " on " + str(self.family.divorced_date)
+            status.pack_start(self.justifyLeft(gtk.Label(divorced_state)))
+        
+        return status
+    
+
+    def create_header(self):
+        header = gtk.VBox()        
+        header.pack_start(self.create_spouses_pane(), expand=False)
+        header.pack_start(self.create_spouses_status_pane(), expand=False)
+        return header
+    
+    
+    def _on_child_row_activated(self,  treeview, path, view_column,  user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi, = store.get(iter,user_data)
+        # check if the activation come from a nice icon        
+        hildon.WindowStack.get_default().pop_1()
+        window = IndividualView(self.zcore, indi, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+    
+    def create_children_pane(self):
+        children = gtk.VBox()
+        
+        SEX_PICTURE_COLUMN_INDEX = 0
+        FIRSTNAME_COLUMN_INDEX = 1
+        NAME_COLUMN_INDEX = 2
+        NICKNAME_COLUMN_INDEX = 3
+        YEAR_BIRTH_DEATH_COLUMN_INDEX = 4
+        INDIVIDUAL_OBJECT_COLUMN_INDEX = 5
+        self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str, str, object)
+        for indi in self.family.children:
+            
+            if indi.gender == "male":
+                sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
+            elif indi.gender == "female":
+                sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
+            else:
+                sex_picture = None
+                                
+
+            year_birth_death = ""
+            if indi.birthDate:
+                year_birth_death += str(indi.birthDate.year)
+        
+            if indi.deathDate:
+                year_birth_death += "-" + str(indi.deathDate.year)
+                
+            self.model.append([sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi])   
+        
+        self.view = gtk.TreeView(self.model)     
+        self.view.set_headers_visible(True)           
+        self.view.set_headers_clickable(True)
+        
+        column = gtk.TreeViewColumn("S")
+        column_renderer = gtk.CellRendererPixbuf()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, pixbuf=SEX_PICTURE_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("firstname")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=FIRSTNAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("name")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("nick")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NICKNAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("birth-death")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=YEAR_BIRTH_DEATH_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+               
+
+        self.view.connect("row-activated", self._on_child_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
+        
+
+        
+        children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
+        children.add(self.view)
+
+        
+        return children
+        
+    def init_center_view(self, centerview):
+        frame = gtk.Frame("Spouses")
+        frame.add(self.create_header())        
+        centerview.pack_start(frame, expand=False,padding=5 )
+        frame = gtk.Frame("Children")
+        frame.add(self.create_children_pane())
+        centerview.pack_start(frame,expand=False, padding=5)
+
+
+
 class IndividualView(MaegenStackableWindow):
     '''
-    This pane show somme statistical information about the database
-    and main action such as add a new individual and add a new family
+    This pane show somme detail of an individual
     '''
     def __init__(self, zcore, individual, database_filename, edit_mode=False):
         self.zcore = zcore
@@ -1118,21 +1553,6 @@ class IndividualView(MaegenStackableWindow):
         return picker_button
 
 
-    def _get_gender_image(self, individual):
-        if individual.gender:
-            if individual.gender == "male":
-                pixbuf = gtk.gdk.pixbuf_new_from_file("male.png")
-                image = gtk.Image()
-                image.set_from_pixbuf(pixbuf)
-            elif individual.gender == "female":
-                pixbuf = gtk.gdk.pixbuf_new_from_file("female.png")
-                image = gtk.Image()
-                image.set_from_pixbuf(pixbuf)
-            else:
-                image = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_BUTTON)
-        else:
-            image = gtk.image_new_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_BUTTON)
-        return image
 
 
     def _create_parent_widget(self, individual):
@@ -1148,7 +1568,7 @@ class IndividualView(MaegenStackableWindow):
         
         button.set_text(str(individual), datestr)
         # Set image
-        image = self._get_gender_image(individual)
+        image = _get_gender_image(individual)
           
             
         button.set_image(image)
@@ -1196,7 +1616,7 @@ class IndividualView(MaegenStackableWindow):
         
         button.set_text(str(individual), datestr)
         # Set image
-        image = self._get_gender_image(individual)
+        image = _get_gender_image(individual)
           
             
         button.set_image(image)
@@ -1221,7 +1641,7 @@ class IndividualView(MaegenStackableWindow):
         
         button.set_text(str(individual), datestr)
         # Set image
-        image = self._get_gender_image(individual)
+        image = _get_gender_image(individual)
           
             
         button.set_image(image)
@@ -1287,7 +1707,7 @@ class IndividualView(MaegenStackableWindow):
             self.edit_gender_picker = self._create_gender_picker(individual)
             identification.pack_start(self.edit_gender_picker, expand=False)
         else:
-             identification.pack_start(self.justifyLeft(self._get_gender_image(individual)))
+             identification.pack_start(self.justifyLeft(_get_gender_image(individual)))
         # name
         if self.edit_mode:
             self.edit_name = hildon.Entry(gtk.HILDON_SIZE_AUTO)

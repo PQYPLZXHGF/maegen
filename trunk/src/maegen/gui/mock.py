@@ -42,8 +42,13 @@ class Maegen(maegen.Maegen):
         indi2.birthDate = date(1913,9,11)
         indi2.deathDate = date(1995,8,30)
         indi2.gender = "female"
-              
-        self.make_child(indi,   self.create_new_family(indi1, indi2))
+        fam = self.create_new_family(indi1, indi2)
+        self.make_child(indi,  fam )
+        fam.married = True
+        fam.married_date = date(2000,1,1)
+        fam.married_place="tombouctou"
+        fam.divorced = True
+        fam.divorced_date = date(2005,3,15)
         
         
         

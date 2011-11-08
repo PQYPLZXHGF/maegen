@@ -205,6 +205,8 @@ class Maegen(object):
         indi_without_parents = filter(lambda x: x.father is None and x.mother is None, self.database.individuals)
         return len(indi_without_parents)
     
+    
+    
     def names_count(self):
         '''
         return the count of patronymic name in the database
@@ -373,6 +375,13 @@ class Maegen(object):
         '''
         return list(self.database.families)
         
+
+    def retrieve_branches(self):
+        '''
+        Return all individuals which are root of a branch e.g. which don't have parents.  
+        '''
+        indi_without_parents = filter(lambda x: x.father is None and x.mother is None, self.database.individuals)
+        return indi_without_parents
 
     def get_maegen_storage_dir(self):
         '''
