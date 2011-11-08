@@ -428,8 +428,9 @@ class IndividualListView(MaegenStackableWindow):
         NAME_COLUMN_INDEX = 2
         NICKNAME_COLUMN_INDEX = 3
         YEAR_BIRTH_DEATH_COLUMN_INDEX = 4
-        INDIVIDUAL_OBJECT_COLUMN_INDEX = 5
-        self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str, str, object)
+        OOCUPATION_COLUMN_INDEX = 5
+        INDIVIDUAL_OBJECT_COLUMN_INDEX = 6
+        self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str, str, str, object)
         for indi in self.zcore.retrieve_all_individuals():
             
             if indi.gender == "male":
@@ -447,7 +448,7 @@ class IndividualListView(MaegenStackableWindow):
             if indi.deathDate:
                 year_birth_death += "-" + str(indi.deathDate.year)
                 
-            self.model.append([sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi])   
+            self.model.append([sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi.occupation, indi])   
         
         self.view = gtk.TreeView(self.model)     
         self.view.set_headers_visible(True)           
@@ -484,11 +485,19 @@ class IndividualListView(MaegenStackableWindow):
         self.view.append_column(column)
         
         column = gtk.TreeViewColumn("birth-death")
-        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
-        column.set_property("fixed-width", 300)
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
         column_renderer = gtk.CellRendererText()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, text=YEAR_BIRTH_DEATH_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+        column = gtk.TreeViewColumn("occupation")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=OOCUPATION_COLUMN_INDEX) 
         self.view.append_column(column)
                 
 
@@ -503,12 +512,147 @@ class IndividualListView(MaegenStackableWindow):
     def _on_row_activated(self,  treeview, path, view_column,  user_data):
         store = treeview.get_model()
         iter = store.get_iter(path)
-        indi, = store.get(iter,user_data)
-        # check if the activation come from a nice icon
+        indi, = store.get(iter,user_data)                 
+        hildon.WindowStack.get_default().pop_1()     
         window = IndividualView(self.zcore, indi, self.database_filename, False)
         self.program.add_window(window)
         window.show_all()
         
+
+class FamilyListView(MaegenStackableWindow):
+    '''
+    This pane show family list. This is a read view.
+    '''
+    
+    def __init__(self, zcore, database_filename):
+        
+        self.zcore = zcore
+        self.database_filename = database_filename
+        MaegenStackableWindow.__init__(self, "Family list")
+        
+         # add app menu
+        
+        menu = hildon.AppMenu()
+        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
+        
+        menu.show_all()
+        self.set_app_menu(menu)
+
+    def init_center_view(self, centerview):
+        HUSB_SEX_PICTURE_COLUMN_INDEX = 0
+        HUSB_FULL_NAME_COLUMN_INDEX = 1            
+        HUSB_YEAR_BIRTH_DEATH_COLUMN_INDEX = 2
+        WIFE_SEX_PICTURE_COLUMN_INDEX = 3        
+        WIFE_FULL_NAME_COLUMN_INDEX = 4            
+        WIFE_YEAR_BIRTH_DEATH_COLUMN_INDEX = 5        
+        FAMILY_OBJECT_COLUMN_INDEX = 6
+        self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str,gtk.gdk.Pixbuf, str, str, object)
+        for family in self.zcore.retrieve_all_families():
+            husb_picture = None
+            husb_full_name = None
+            husb_year_birth_death = ""
+            
+            wife_picture = None
+            wife_full_name = None
+            wife_year_birth_death = ""            
+            
+            if family.husband:
+                husb_picture = gtk.gdk.pixbuf_new_from_file("male.png")                            
+                indi = family.husband                           
+                husb_full_name = str(indi)
+                if indi.birthDate:
+                    husb_year_birth_death += str(indi.birthDate.year)        
+                if indi.deathDate:
+                    husb_year_birth_death += "-" + str(indi.deathDate.year)
+               
+            if family.wife :
+                wife_picture = gtk.gdk.pixbuf_new_from_file("female.png")
+                indi = family.wife        
+                wife_full_name = str(indi)                   
+                if indi.birthDate:
+                    wife_year_birth_death += str(indi.birthDate.year)        
+                if indi.deathDate:
+                    wife_year_birth_death += "-" + str(indi.deathDate.year)
+                 
+                  
+            self.model.append([husb_picture, husb_full_name, husb_year_birth_death, wife_picture, wife_full_name, wife_year_birth_death, family])   
+        
+        self.view = gtk.TreeView(self.model)     
+        self.view.set_headers_visible(True)           
+        self.view.set_headers_clickable(True)
+        
+        column = gtk.TreeViewColumn("gender")
+        column_renderer = gtk.CellRendererPixbuf()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, pixbuf=HUSB_SEX_PICTURE_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("husband")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=HUSB_FULL_NAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+            
+        
+        column = gtk.TreeViewColumn("birth-death")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=HUSB_YEAR_BIRTH_DEATH_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+
+
+        column = gtk.TreeViewColumn("gender")
+        column_renderer = gtk.CellRendererPixbuf()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, pixbuf=WIFE_SEX_PICTURE_COLUMN_INDEX) 
+        self.view.append_column(column)
+        
+        column = gtk.TreeViewColumn("wife")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=WIFE_FULL_NAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+            
+        
+        column = gtk.TreeViewColumn("birth-death")
+#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
+#        column.set_property("fixed-width", 300)
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=WIFE_YEAR_BIRTH_DEATH_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+                
+
+        self.view.connect("row-activated", self._on_row_activated, FAMILY_OBJECT_COLUMN_INDEX)
+        
+
+        
+        
+        centerview.add(self.view)
+        
+
+    def _on_row_activated(self,  treeview, path, view_column,  user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi, = store.get(iter,user_data)
+        # check if the activation come from a nice icon
+        not_yet_implemented()
+#        window = FamilyView(self.zcore, indi, self.database_filename, False)
+#        self.program.add_window(window)
+#        window.show_all()
+
       
       
 class DefaultView(MaegenStackableWindow):
@@ -618,13 +762,17 @@ class DefaultView(MaegenStackableWindow):
          window.show_all()
          
     def _on_btn_family_clicked_event(self, widget, data):
-        not_yet_implemented()
+         window = FamilyListView(self.zcore, self.database_filename)
+         self.program.add_window(window)
+         window.show_all()
 
     def _on_btn_branch_clicked_event(self, widget, data):
         not_yet_implemented()
 
     def _on_btn_name_clicked_event(self, widget, data):
-        not_yet_implemented()
+         window = NameListView(self.zcore, self.database_filename)
+         self.program.add_window(window)
+         window.show_all()
 
     def init_center_view(self, centerview):
        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
