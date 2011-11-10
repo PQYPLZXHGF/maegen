@@ -836,7 +836,8 @@ class NameListView(MaegenStackableWindow):
         NAME_COLUMN_INDEX = 0
         COUNT_COLUMN_INDEX = 1            
         PERIOD_COLUMN_INDEX = 2
-        self.model = gtk.ListStore(str, str, str)
+        INDIVIDUAL_COLUMN_INDEX = 3
+        self.model = gtk.TreeStore(str, str, str, object)
         for name in self.zcore.retrieve_all_names():
             upper_name = name.upper()
             indi_list = self.zcore.retrieve_individual_for_name(upper_name)
@@ -866,12 +867,18 @@ class NameListView(MaegenStackableWindow):
             if date_max:
                 period += "-" + str(date_max.year)
                   
-            self.model.append([upper_name, len(indi_list), period])   
+            root = self.model.append(None, [upper_name, len(indi_list), period, None])
+            for indi in indi_list:
+                life_period = ""
+                if indi.birthDate:
+                    life_period += str(indi.birthDate.year)
+                if indi.deathDate:
+                    life_period += "-" + str(indi.deathDate.year)
+                self.model.append(root, [str(indi),None, life_period, indi] )   
         
-        self.view = gtk.TreeView(self.model)     
+        self.view = gtk.TreeView(self.model)             
         self.view.set_headers_visible(True)           
-        self.view.set_headers_clickable(True)
-        
+        self.view.set_headers_clickable(True)        
         
         column = gtk.TreeViewColumn("Name")
         column_renderer = gtk.CellRendererText()
@@ -895,7 +902,7 @@ class NameListView(MaegenStackableWindow):
 
 
 
-        self.view.connect("row-activated", self._on_row_activated, None)
+        self.view.connect("row-activated", self._on_row_activated, INDIVIDUAL_COLUMN_INDEX)
         
 
         
@@ -903,15 +910,14 @@ class NameListView(MaegenStackableWindow):
         centerview.add(self.view)
         
 
-    def _on_row_activated(self,  treeview, path, view_column,  user_data):
-        not_yet_implemented()
-#        store = treeview.get_model()
-#        iter = store.get_iter(path)
-#        family, = store.get(iter,user_data)
-#        # check if the activation come from a nice icon        
-#        window = FamilyView(self.zcore, family, self.database_filename, False)
-#        self.program.add_window(window)
-#        window.show_all()
+    def _on_row_activated(self,  treeview, path, view_column,  user_data):   
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi, = store.get(iter,user_data)
+        if indi:                
+            window = IndividualView(self.zcore, indi, self.database_filename, False)
+            self.program.add_window(window)
+            window.show_all()
 
       
       
