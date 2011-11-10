@@ -47,7 +47,7 @@ setup(name='maegen',
       url='http://blog.maegen.bressure.net',
       download_url='http://maegen.bressure.net',
       description='Maegen is a genealogical application for N900',
-      long_description='Maegen let you to collect genealogical information on the go and export then in GEDCOM format',
+      long_description='Maegen let you to collect genealogical information on the go and export them in GEDCOM format',
       classifiers=[
           'Development Status :: 2 - Pre-Alpha',
           "Environment :: Handhelds/PDA's",          
