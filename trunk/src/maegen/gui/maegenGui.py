@@ -807,11 +807,117 @@ class FamilyListView(MaegenStackableWindow):
         self.program.add_window(window)
         window.show_all()
 
+
+
+class NameListView(MaegenStackableWindow):
+    '''
+    This pane show name list. This is a read view.
+    '''
+    
+    def __init__(self, zcore, database_filename):
+        
+        self.zcore = zcore
+        self.database_filename = database_filename
+        MaegenStackableWindow.__init__(self, "Name list")
+        
+         # add app menu
+        
+        menu = hildon.AppMenu()
+        
+        aboutMenuBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+        aboutMenuBtn.set_label("About");
+        aboutMenuBtn.connect("clicked", show_about_dialog, None)
+        menu.append(aboutMenuBtn)
+        
+        menu.show_all()
+        self.set_app_menu(menu)
+
+    def init_center_view(self, centerview):
+        NAME_COLUMN_INDEX = 0
+        COUNT_COLUMN_INDEX = 1            
+        PERIOD_COLUMN_INDEX = 2
+        self.model = gtk.ListStore(str, str, str)
+        for name in self.zcore.retrieve_all_names():
+            upper_name = name.upper()
+            indi_list = self.zcore.retrieve_individual_for_name(upper_name)
+            period = ""
+            date_min = None
+            date_max = None
+                    
+            for indi in indi_list:
+                def calculate_life_period(date_min, date_max, life_date):
+                    if life_date:
+                        if date_min:
+                            if life_date < date_min:
+                                date_min = life_date
+                        else:                        
+                                date_min = life_date
+                        if date_max:
+                            if life_date > date_max:
+                                date_max = life_date
+                        else:
+                                date_max = life_date
+                    return (date_min,date_max)
+                date_min, date_max = calculate_life_period(date_min, date_max, indi.birthDate)                       
+                date_min, date_max = calculate_life_period(date_min, date_max, indi.deathDate)
+                
+            if date_min:
+                period += str(date_min.year)
+            if date_max:
+                period += "-" + str(date_max.year)
+                  
+            self.model.append([upper_name, len(indi_list), period])   
+        
+        self.view = gtk.TreeView(self.model)     
+        self.view.set_headers_visible(True)           
+        self.view.set_headers_clickable(True)
+        
+        
+        column = gtk.TreeViewColumn("Name")
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=NAME_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+        column = gtk.TreeViewColumn("Count")
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=COUNT_COLUMN_INDEX) 
+        self.view.append_column(column)
+            
+        
+        column = gtk.TreeViewColumn("Period")
+        column_renderer = gtk.CellRendererText()
+        column.pack_start(column_renderer)
+        column.set_attributes(column_renderer, text=PERIOD_COLUMN_INDEX) 
+        self.view.append_column(column)
+
+
+
+
+        self.view.connect("row-activated", self._on_row_activated, None)
+        
+
+        
+        
+        centerview.add(self.view)
+        
+
+    def _on_row_activated(self,  treeview, path, view_column,  user_data):
+        not_yet_implemented()
+#        store = treeview.get_model()
+#        iter = store.get_iter(path)
+#        family, = store.get(iter,user_data)
+#        # check if the activation come from a nice icon        
+#        window = FamilyView(self.zcore, family, self.database_filename, False)
+#        self.program.add_window(window)
+#        window.show_all()
+
       
       
 class DefaultView(MaegenStackableWindow):
     '''
-    This pane show somme statiscial information about the database
+    This pane show somme statistical informations about the database
     and main action such as add a new individual and add a new family
     '''
     def __init__(self, zcore, database_filename):

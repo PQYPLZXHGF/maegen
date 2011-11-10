@@ -117,7 +117,7 @@ class GedcomWriter():
             name_personal += " /?"
         resu += str(indent) + " NAME " + name_personal + "\n"
         if indi.nickname:
-            resu += str(indent + 1) + NICK + indi.nickname + "\n"
+            resu += str(indent + 1) + " NICK " + indi.nickname + "\n"
         return resu
     
     
