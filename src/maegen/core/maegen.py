@@ -375,6 +375,25 @@ class Maegen(object):
         '''
         return list(self.database.families)
         
+    def retrieve_all_names(self):
+        '''
+        return all names in the database as a set        
+        '''
+        return set(map(lambda indi: indi.name.upper(),self.database.individuals))
+    
+    
+    def retrieve_individual_for_name (self, name, exact=False):
+        '''
+        Return all individual with given name.
+        Parameter
+            - name : the name to search
+            - exact : if True exact match. If False the name of the individual should only containt the parameter name. 
+        '''
+        if exact:
+            return filter(lambda indi: name == indi.name.upper(),self.database.individuals)
+        else:
+            pattern = name.upper()
+            return filter(lambda indi: indi.name.upper().find(pattern) > -1, self.database.individuals)
 
     def retrieve_branches(self):
         '''
