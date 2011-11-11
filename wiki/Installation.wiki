@@ -24,6 +24,4 @@ Download the egg then run `easy_install -f <maegen_egg>`
 
 = From Pypi =
 
-This rrquires easy_install to be available o the device. Simply run as root `easy_inbstall maegen`
-
-*unfortunatly this methode does not work right now due to a hidon specific file which can not be copied by easy_install*
+This rrquires easy_install to be available o the device. Simply run as root `easy_install maegen`
