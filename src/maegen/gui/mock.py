@@ -44,6 +44,8 @@ class Maegen(maegen.Maegen):
         indi2.gender = "female"
         fam = self.create_new_family(indi1, indi2)
         self.make_child(indi,  fam )
+        for i in range(15):
+            self.make_child(self.create_new_individual("toto" + str(i),"titi" + str(i)), fam)
         fam.married = True
         fam.married_date = date(2000,1,1)
         fam.married_place="tombouctou"

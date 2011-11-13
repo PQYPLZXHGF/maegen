@@ -1173,7 +1173,7 @@ class FamilyView(MaegenStackableWindow):
             editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             editBtn.set_label("Edit");
             editBtn.connect("clicked", self._on_edit_menu_clicked, None)
-            menu.append(editBtn)   
+            menu.append(editBtn)    
         
 
         
@@ -1228,11 +1228,25 @@ class FamilyView(MaegenStackableWindow):
 
 
     def _on_parent_clicked_event(self, widget, data):
-        hildon.WindowStack.get_default().pop_1()
-        indi = data     
-        window = IndividualView(self.zcore, indi, self.database_filename, False)
-        self.program.add_window(window)
-        window.show_all()
+        if self.edit_mode:
+            # open a dialog an individual or create a new one
+            if data == self.edit_husband:
+                self._open_dialog_to_select_parent(widget, "husband")
+            elif  data == self.edit_wife:                
+                self._open_dialog_to_select_parent(widget, "wife")                
+            elif data == self.family.husband and self.edit_husband is None:                
+                self._open_dialog_to_select_parent(widget, "husband")
+            elif data == self.family.wife and self.edit_wife is None:
+                self._open_dialog_to_select_parent(widget,"wife")
+            else:
+                logging.error("unexpected data attribute " + str(data))
+           
+        else:
+            hildon.WindowStack.get_default().pop_1()
+            indi = data     
+            window = IndividualView(self.zcore, indi, self.database_filename, False)
+            self.program.add_window(window)
+            window.show_all()
         
     def _create_parent_widget(self, individual):
         widget = gtk.HBox()
@@ -1255,45 +1269,133 @@ class FamilyView(MaegenStackableWindow):
                                         
         button.connect("clicked", self._on_parent_clicked_event, individual)
         widget.pack_start(button)
-        if self.edit_mode:
-            pass
-#            if individual == self.individual.father and not self.edit_father:
-#                self.edit_father = None
-#            elif  individual == self.individual.mother and not self.edit_mother:
-#                self.edit_mother= None
-#            elif individual == self.edit_father:
-#                pass
-#            elif individual == self.edit_mother:
-#                pass
-#            else:
-#                logging.error("unexpected individual parameter " + str(individual))        
-#                   
-#            if individual == self.individual.father or individual == self.edit_father:                
-#                self.father_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
-#                self.father_enabled.set_label("enabled")
-#                self.father_enabled.set_active(True)
-#                widget.pack_start(self.father_enabled, expand=False)
-#            if individual == self.individual.mother or individual == self.edit_mother:                
-#                self.mother_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
-#                self.mother_enabled.set_label("enabled")
-#                self.mother_enabled.set_active(True)
-#                widget.pack_start(self.mother_enabled, expand=False)
+        if self.edit_mode:        
+            if individual == self.family.husband and not self.edit_husband:
+                self.edit_husband = None
+            elif  individual == self.family.wife and not self.edit_wife:
+                self.edit_wife = None
+            elif individual == self.edit_husband:
+                pass
+            elif individual == self.edit_wife:
+                pass
+            else:
+                logging.error("unexpected individual parameter " + str(individual))        
+                   
+            if individual == self.family.husband or individual == self.edit_husband:                
+                self.husband_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+                self.husband_enabled.set_label("enabled")
+                self.husband_enabled.set_active(True)
+                widget.pack_start(self.husband_enabled, expand=False)
+            if individual == self.family.wife or individual == self.edit_wife:                
+                self.wife_enabled = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+                self.wife_enabled.set_label("enabled")
+                self.wife_enabled.set_active(True)
+                widget.pack_start(self.wife_enabled, expand=False)
                
         return widget
 
+
+    def _open_dialog_to_select_parent(self, widget, parent):
+        selector = hildon.TouchSelector()
+        model = gtk.ListStore(str, object)
+        logging.debug("creating list for parent selection...")
+        for indi in self.zcore.retrieve_all_individuals():
+            if parent == "husband":
+                if indi.gender in ["male", None] and not indi == self.family.husband:
+                    model.append([str(indi), indi])
+            elif parent == "wife":
+                if indi.gender in ["female", None] and not indi == self.family.wife:
+                    model.append([str(indi), indi])
+            else:
+                logging.error("unexpected spouse parameter " + str(parent))
+                    
+        selector.append_column(model, gtk.CellRendererText(), text=0)
+        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        def __enable_prent_checkbox(column , user_data):
+            if parent == "husband":
+                self.husband_enabled.set_active(True)    
+            elif parent == "wife":
+                self.wife_enabled.set_active(True)
+            else:
+                logging.error("unexpected spouse parameter " + str(parent)) 
+            
+        selector.connect("changed", __enable_prent_checkbox)
+        
+        dialog = hildon.PickerDialog(self)
+        dialog.set_transient_for(self)
+        dialog.set_title("Select an individual")
+        dialog.set_done_label("Set as spouse")
+        dialog.set_selector(selector)
+        dialog.show_all()
+        self.selected_individual = None
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            model, iter = selector.get_selected(0)
+            indi = model.get(iter, 1)[0]
+            dialog.destroy()
+            if parent == "husband":
+                self.edit_husband = indi
+            elif parent == "wife":
+                self.edit_wife = indi
+            else:
+                logging.error("unexpected spouse parmaeter " + str(parent))
+            for child in self.spouses_pane.get_children():
+                logging.debug("removing spouse widget from spouse pane...")
+                self.spouses_pane.remove(child)
+            logging.debug("attemting to add new spouse widget...")
+            self._create_spouses_pane()
+            self.spouses_pane.show_all()
+        else:
+            dialog.destroy()
+
+
+    def _create_spouses_pane(self):
+        if self.edit_mode:
+            if self.edit_husband:
+                logging.debug("add a spouse widget for edited husband " + str(self.edit_husband))
+                self.spouses_pane.pack_start(self._create_parent_widget(self.edit_husband))
+            elif self.family.husband:
+                logging.debug("add a spouse widget for current husband " + str(self.family.husband))
+                self.spouses_pane.pack_start(self._create_parent_widget(self.family.husband))
+            else:
+                logging.debug("add a button to set an husband")
+                add_husband_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+                add_husband_btn.set_title("Add husband")               
+                add_husband_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")
+                self.spouses_pane.pack_start(add_husband_btn)
+        elif self.family.husband:
+            self.spouses_pane.pack_start(self._create_parent_widget(self.family.husband))
+        else:
+            logging.debug("no widget for husband cause there is no husband and not in edit mode")
+            
+        if self.edit_mode:
+            if self.edit_wife:
+                logging.debug("add a spouse widget for edited wife" + str(self.edit_wife))
+                self.spouses_pane.pack_start(self._create_parent_widget(self.edit_wife))
+            elif self.family.wife:
+                logging.debug("add a spouse widget for current wife " + str(self.family.wife))                
+                self.spouses_pane.pack_start(self._create_parent_widget(self.family.wife))
+            else:
+                logging.debug("add a button to set a wife")
+                add_wife_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+                add_wife_btn.set_title("Add husband")               
+                add_wife_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")
+                self.spouses_pane.pack_start(add_wife_btn)
+        elif self.family.wife:                        
+            self.spouses_pane.pack_start(self._create_parent_widget(self.family.wife))
+        else:
+            logging.debug("no widget for wife cause there is no wife and not in edit mode")
+ 
 
     def create_spouses_pane(self):
         '''
         Create a widget containing spouses
         '''
-        spouses = gtk.HBox()
+        self.spouses_pane = gtk.HBox()                        
+
+        self._create_spouses_pane()
         
-        if self.family.husband:
-            spouses.pack_start(self._create_parent_widget(self.family.husband))
-        if self.family.wife:
-            spouses.pack_start(self._create_parent_widget(self.family.wife))
-        
-        return spouses
+        return self.spouses_pane
     
     def create_spouses_status_pane(self):
         '''
@@ -1329,17 +1431,18 @@ class FamilyView(MaegenStackableWindow):
     
     
     def _on_child_row_activated(self,  treeview, path, view_column,  user_data):
-        store = treeview.get_model()
-        iter = store.get_iter(path)
-        indi, = store.get(iter,user_data)
-        # check if the activation come from a nice icon        
-        hildon.WindowStack.get_default().pop_1()
-        window = IndividualView(self.zcore, indi, self.database_filename, False)
-        self.program.add_window(window)
-        window.show_all()
+        if not self.edit_mode:
+            store = treeview.get_model()
+            iter = store.get_iter(path)
+            indi, = store.get(iter,user_data)
+            # check if the activation come from a nice icon        
+            hildon.WindowStack.get_default().pop_1()
+            window = IndividualView(self.zcore, indi, self.database_filename, False)
+            self.program.add_window(window)
+            window.show_all()
     
     def create_children_pane(self):
-        children = gtk.VBox()
+ 
         
         SEX_PICTURE_COLUMN_INDEX = 0
         FIRSTNAME_COLUMN_INDEX = 1
@@ -1378,32 +1481,24 @@ class FamilyView(MaegenStackableWindow):
         self.view.append_column(column)
         
         column = gtk.TreeViewColumn("firstname")
-#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
-#        column.set_property("fixed-width", 300)
         column_renderer = gtk.CellRendererText()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, text=FIRSTNAME_COLUMN_INDEX) 
         self.view.append_column(column)
         
         column = gtk.TreeViewColumn("name")
-#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
-#        column.set_property("fixed-width", 300)
         column_renderer = gtk.CellRendererText()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, text=NAME_COLUMN_INDEX) 
         self.view.append_column(column)
         
         column = gtk.TreeViewColumn("nick")
-#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
-#        column.set_property("fixed-width", 300)
         column_renderer = gtk.CellRendererText()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, text=NICKNAME_COLUMN_INDEX) 
         self.view.append_column(column)
         
         column = gtk.TreeViewColumn("birth-death")
-#        column.set_property("sizing", gtk.TREE_VIEW_COLUMN_FIXED)
-#        column.set_property("fixed-width", 300)
         column_renderer = gtk.CellRendererText()
         column.pack_start(column_renderer)
         column.set_attributes(column_renderer, text=YEAR_BIRTH_DEATH_COLUMN_INDEX) 
@@ -1412,14 +1507,41 @@ class FamilyView(MaegenStackableWindow):
                
 
         self.view.connect("row-activated", self._on_child_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
-        
 
         
-        children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
-        children.add(self.view)
 
-        
-        return children
+        if self.edit_mode:
+            children_edit_pane = gtk.HBox()
+            
+            children = gtk.VBox()
+            children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
+            
+            pannable_area = hildon.PannableArea()
+            pannable_area.set_property('mov_mode',hildon.MOVEMENT_MODE_BOTH)
+            #pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
+            pannable_area.add_with_viewport(self.view)
+            children.add(pannable_area)                    
+
+            children_edit_pane.pack_start(children, expand=True)
+            
+            button_list = gtk.VBox()
+            add_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+            add_btn.set_title("Add child")               
+#            add_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")
+            remove_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+            remove_btn.set_title("Remove child")               
+#            add_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")     
+            button_list.pack_start(add_btn, expand=False)
+            button_list.pack_start(remove_btn, expand=False)
+            
+            children_edit_pane.pack_start(button_list, expand=False)
+            
+            return children_edit_pane
+        else:
+            children = gtk.VBox()
+            children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
+            children.add(self.view)                    
+            return children
         
     def init_center_view(self, centerview):
         frame = gtk.Frame("Spouses")
