@@ -1397,27 +1397,112 @@ class FamilyView(MaegenStackableWindow):
         
         return self.spouses_pane
     
+    def _create_marriage_event_detail_pane(self):
+                
+        hbox = gtk.HBox()
+        self.edit_marriage_date = hildon.hildon_date_button_new_with_year_range(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL, min_year=1000, max_year=datetime.date.today().year)
+        self.edit_marriage_date.set_title("Date")
+        self.marriagedate_enable = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+        self.marriagedate_enable.set_label("enabled")
+        
+        if self.family.married and self.family.married_date:
+            self.edit_marriage_date.set_date(self.family.married_date.year, self.family.married_date.month-1, self.family.married_date.day)
+            self.marriagedate_enable.set_active(True)
+            def __enable_birthdate_checkbox(column , user_data):
+                self.marriagedate_enable.set_active(True)
+            self.edit_marriage_date.get_selector().connect("changed", __enable_birthdate_checkbox)    
+
+        hbox.pack_start(self.edit_marriage_date, expand=False)
+        hbox.pack_start(self.marriagedate_enable, expand=False)
+        
+        self.marriage_event_detail_pane.pack_start(hbox, expand=False)            
+
+                    
+        self.edit_marriage_place = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        if self.family.married_place:
+            self.edit_marriage_place.set_text(self.family.married_place)
+        else:
+            self.edit_marriage_place.set_placeholder("Enter location")
+        self.marriage_event_detail_pane.pack_start(hildon.Caption(None,"Place", self.edit_marriage_place), expand=False)
+
+    
     def create_spouses_status_pane(self):
         '''
         Ceate a widget containing spouses status e.g. marriage and divorce information.
         '''
         status = gtk.VBox()
         
-        marriage_state = "no mention"
-        if self.family.married:
-            marriage_state = "married"
-            if self.family.married_date:
-                marriage_state += " on " + str(self.family.married_date)
-            if self.family.married_place:
-                marriage_state += " at " + self.family.married_place
+        if self.edit_mode:
+            marriage_pane = gtk.HBox()
+            
+            self.edit_marriage = hildon.PickerButton(gtk.HILDON_SIZE_AUTO, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+            self.edit_marriage.set_title("Marriage")
+            selector = hildon.TouchSelector(text=True)
+            self.edit_marriage.set_selector(selector)
+            selector.append_text("no mention")
+            selector.append_text("married")                   
+            if self.family.married:               
+                self.edit_marriage.set_active(1)
+            else:
+                self.edit_marriage.set_active(0)
+                
+            def __enable_event_detail_widget(column , user_data):
+                model, iter = self.edit_marriage.get_selector().get_selected(0)
+                marriage_status = model.get(iter,0)[0]
+                if marriage_status == "no mention":
+                    for child in self.marriage_event_detail_pane.get_children():
+                        self.marriage_event_detail_pane.remove(child)
+                        self.marriage_event_detail_pane.show_all()
+                elif marriage_status == "married":
+                    self._create_marriage_event_detail_pane()
+                    self.marriage_event_detail_pane.show_all()
+                    
+            self.edit_marriage.get_selector().connect("changed", __enable_event_detail_widget)
+            marriage_pane.pack_start(self.edit_marriage, expand=False)
+        
+            self.marriage_event_detail_pane = gtk.HBox()
+            if self.family.married : self._create_marriage_event_detail_pane()
+            marriage_pane.pack_start(self.marriage_event_detail_pane, expand=False)
+            
+            status.pack_start(marriage_pane)
+            
+            divorced_pane = gtk.HBox()
+            
+            self.edit_divorce = hildon.PickerButton(gtk.HILDON_SIZE_AUTO, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+            self.edit_divorce.set_title("Divorce")
+            selector = hildon.TouchSelector(text=True)
+            self.edit_divorce.set_selector(selector)
+            selector.append_text("not divorced")
+            selector.append_text("divorced")                   
+            if self.family.divorced:               
+                self.edit_divorce.set_active(1)
+            else:
+                self.edit_divorce.set_active(0)
+            divorced_pane.pack_start(self.edit_divorce, expand=False)
+
+            self.edit_divorce_date = hildon.hildon_date_button_new_with_year_range(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL, min_year=1000, max_year=datetime.date.today().year)
+            self.edit_divorce_date.set_title("Date")
+            if self.family.divorced and self.family.divorced_date:
+                self.edit_divorce_date.set_date(self.family.divorced_date.year, self.family.divorced_date.month-1, self.family.divorced_date.day)        
+            divorced_pane.pack_start(self.edit_divorce_date, expand=False)   
             
             
-        status.pack_start(self.justifyLeft(gtk.Label("Marriage : " + marriage_state)))
-        divorced_state = "not divorced"
-        if self.family.divorced:
-            divorced_state = "Divorced"
-            if self.family.divorced_date:
-                divorced_state += " on " + str(self.family.divorced_date)
+            status.pack_start(divorced_pane)
+        else:
+            marriage_state = "no mention"
+            if self.family.married:
+                marriage_state = "married"
+                if self.family.married_date:
+                    marriage_state += " on " + str(self.family.married_date)
+                if self.family.married_place:
+                    marriage_state += " at " + self.family.married_place
+                        
+            status.pack_start(self.justifyLeft(gtk.Label("Marriage : " + marriage_state)))
+            divorced_state = "not divorced"
+            if self.family.divorced:
+                divorced_state = "Divorced"
+                if self.family.divorced_date:
+                    divorced_state += " on " + str(self.family.divorced_date)
             status.pack_start(self.justifyLeft(gtk.Label(divorced_state)))
         
         return status
@@ -1518,7 +1603,7 @@ class FamilyView(MaegenStackableWindow):
             
             pannable_area = hildon.PannableArea()
             pannable_area.set_property('mov_mode',hildon.MOVEMENT_MODE_BOTH)
-            #pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
+            pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
             pannable_area.add_with_viewport(self.view)
             children.add(pannable_area)                    
 

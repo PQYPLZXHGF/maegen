@@ -489,7 +489,7 @@ class Family(object):
     def __init__(self):
         self.husband = None
         self.wife = None
-        self.married = False
+        self.married = False        
         self.divorced = False
         self.divorced_date= None
         self.married_date = None
