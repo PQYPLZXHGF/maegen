@@ -1169,7 +1169,18 @@ class FamilyView(MaegenStackableWindow):
         
         menu = hildon.AppMenu()
                                                                                                                                                           
-        if not self.edit_mode:
+        if  self.edit_mode:
+            add_child_btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+            add_child_btn.set_label("Add child");
+            add_child_btn.connect("clicked", self._on_add_child_menu_clicked, None)
+            menu.append(add_child_btn)    
+
+            rem_child_btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+            rem_child_btn.set_label("Remove Child");
+            rem_child_btn.connect("clicked", self._on_remove_child_menu_clicked, None)
+            menu.append(rem_child_btn)    
+            
+        else:
             editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             editBtn.set_label("Edit");
             editBtn.connect("clicked", self._on_edit_menu_clicked, None)
@@ -1217,6 +1228,21 @@ class FamilyView(MaegenStackableWindow):
         self.program.add_window(window)
         window.show_all()
 
+
+    def _on_add_child_menu_clicked(self, widget, data):
+        
+        
+    def _on_remove_child_menu_clicked(self, widget, data):
+        
+        store, iter  =self.view.get_selection().get_selected() 
+        indi, = store.get(iter,5)
+        if iter:              
+            self.model.remove(iter)
+            show_banner_information(str(indi) + " has been removed")
+        else:
+            show_banner_information("select a child to remove first")
+       
+       
 
     def _on_edit_menu_clicked(self, widget, data):
         # remove  the currentview
@@ -1397,6 +1423,29 @@ class FamilyView(MaegenStackableWindow):
         
         return self.spouses_pane
     
+    
+    def _create_divorce_event_detail_pane(self):
+        hbox = gtk.HBox()
+        self.edit_divorce_date = hildon.hildon_date_button_new_with_year_range(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL, min_year=1000, max_year=datetime.date.today().year)
+        self.edit_divorce_date.set_title("Date")
+        self.divorcedate_enable = hildon.CheckButton(gtk.HILDON_SIZE_AUTO)
+        self.divorcedate_enable.set_label("enabled")
+                   
+        if self.family.divorced and self.family.divorced_date:
+            self.edit_divorce_date.set_date(self.family.divorced_date.year, self.family.divorced_date.month-1, self.family.divorced_date.day)        
+            self.divorcedate_enable.set_active(True)
+            def __enable_divorcedate_checkbox(column , user_data):
+                self.divorcedate_enable.set_active(True)
+            self.edit_divorce_date.get_selector().connect("changed", __enable_divorcedate_checkbox)
+                    
+
+        hbox.pack_start(self.edit_divorce_date, expand=False)
+        hbox.pack_start(self.divorcedate_enable, expand=False)
+                            
+        self.divorce_event_detail_pane.pack_start(hbox, expand=False) 
+    
+ 
+    
     def _create_marriage_event_detail_pane(self):
                 
         hbox = gtk.HBox()
@@ -1408,9 +1457,9 @@ class FamilyView(MaegenStackableWindow):
         if self.family.married and self.family.married_date:
             self.edit_marriage_date.set_date(self.family.married_date.year, self.family.married_date.month-1, self.family.married_date.day)
             self.marriagedate_enable.set_active(True)
-            def __enable_birthdate_checkbox(column , user_data):
+            def __enable_marriagedate_checkbox(column , user_data):
                 self.marriagedate_enable.set_active(True)
-            self.edit_marriage_date.get_selector().connect("changed", __enable_birthdate_checkbox)    
+            self.edit_marriage_date.get_selector().connect("changed", __enable_marriagedate_checkbox)    
 
         hbox.pack_start(self.edit_marriage_date, expand=False)
         hbox.pack_start(self.marriagedate_enable, expand=False)
@@ -1446,18 +1495,17 @@ class FamilyView(MaegenStackableWindow):
             else:
                 self.edit_marriage.set_active(0)
                 
-            def __enable_event_detail_widget(column , user_data):
+            def __enable_marriage_detail_widget(column , user_data):
                 model, iter = self.edit_marriage.get_selector().get_selected(0)
                 marriage_status = model.get(iter,0)[0]
                 if marriage_status == "no mention":
                     for child in self.marriage_event_detail_pane.get_children():
-                        self.marriage_event_detail_pane.remove(child)
-                        self.marriage_event_detail_pane.show_all()
+                        self.marriage_event_detail_pane.remove(child)                    
                 elif marriage_status == "married":
                     self._create_marriage_event_detail_pane()
-                    self.marriage_event_detail_pane.show_all()
+                self.marriage_event_detail_pane.show_all()
                     
-            self.edit_marriage.get_selector().connect("changed", __enable_event_detail_widget)
+            self.edit_marriage.get_selector().connect("changed", __enable_marriage_detail_widget)
             marriage_pane.pack_start(self.edit_marriage, expand=False)
         
             self.marriage_event_detail_pane = gtk.HBox()
@@ -1478,14 +1526,25 @@ class FamilyView(MaegenStackableWindow):
                 self.edit_divorce.set_active(1)
             else:
                 self.edit_divorce.set_active(0)
+                
+            def __enable_divorce_detail_widget(column , user_data):
+                model, iter = self.edit_divorce.get_selector().get_selected(0)
+                divorce_status = model.get(iter,0)[0]
+                if divorce_status == "not divorced":
+                    for child in self.divorce_event_detail_pane.get_children():
+                        self.divorce_event_detail_pane.remove(child)                    
+                elif divorce_status == "divorced":
+                    self._create_divorce_event_detail_pane()
+                self.divorce_event_detail_pane.show_all()
+                    
+            self.edit_divorce.get_selector().connect("changed", __enable_divorce_detail_widget)                
             divorced_pane.pack_start(self.edit_divorce, expand=False)
 
-            self.edit_divorce_date = hildon.hildon_date_button_new_with_year_range(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL, min_year=1000, max_year=datetime.date.today().year)
-            self.edit_divorce_date.set_title("Date")
-            if self.family.divorced and self.family.divorced_date:
-                self.edit_divorce_date.set_date(self.family.divorced_date.year, self.family.divorced_date.month-1, self.family.divorced_date.day)        
-            divorced_pane.pack_start(self.edit_divorce_date, expand=False)   
-            
+
+            self.divorce_event_detail_pane = gtk.HBox()
+            if self.family.divorced : self._create_divorce_event_detail_pane()
+            divorced_pane.pack_start(self.divorce_event_detail_pane, expand=False)
+        
             
             status.pack_start(divorced_pane)
         else:
@@ -1508,11 +1567,7 @@ class FamilyView(MaegenStackableWindow):
         return status
     
 
-    def create_header(self):
-        header = gtk.VBox()        
-        header.pack_start(self.create_spouses_pane(), expand=False)
-        header.pack_start(self.create_spouses_status_pane(), expand=False)
-        return header
+
     
     
     def _on_child_row_activated(self,  treeview, path, view_column,  user_data):
@@ -1593,45 +1648,21 @@ class FamilyView(MaegenStackableWindow):
 
         self.view.connect("row-activated", self._on_child_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
 
-        
-
-        if self.edit_mode:
-            children_edit_pane = gtk.HBox()
-            
-            children = gtk.VBox()
-            children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
-            
-            pannable_area = hildon.PannableArea()
-            pannable_area.set_property('mov_mode',hildon.MOVEMENT_MODE_BOTH)
-            pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
-            pannable_area.add_with_viewport(self.view)
-            children.add(pannable_area)                    
-
-            children_edit_pane.pack_start(children, expand=True)
-            
-            button_list = gtk.VBox()
-            add_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
-            add_btn.set_title("Add child")               
-#            add_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")
-            remove_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
-            remove_btn.set_title("Remove child")               
-#            add_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")     
-            button_list.pack_start(add_btn, expand=False)
-            button_list.pack_start(remove_btn, expand=False)
-            
-            children_edit_pane.pack_start(button_list, expand=False)
-            
-            return children_edit_pane
-        else:
-            children = gtk.VBox()
-            children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
-            children.add(self.view)                    
-            return children
+        children = gtk.VBox()
+        children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
+        children.add(self.view)                    
+        return children
         
     def init_center_view(self, centerview):
         frame = gtk.Frame("Spouses")
-        frame.add(self.create_header())        
+        frame.add(self.create_spouses_pane())        
         centerview.pack_start(frame, expand=False,padding=5 )
+        
+        frame = gtk.Frame("Marriage")
+        frame.add(self.create_spouses_status_pane())        
+        centerview.pack_start(frame, expand=False,padding=5 )
+        
+        
         frame = gtk.Frame("Children")
         frame.add(self.create_children_pane())
         centerview.pack_start(frame,expand=False, padding=5)
