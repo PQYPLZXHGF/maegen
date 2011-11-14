@@ -1198,9 +1198,83 @@ class FamilyView(MaegenStackableWindow):
         menu.show_all()
         self.set_app_menu(menu)  
 
+    def _create_row_for_children_list_model(self, indi):
+        '''
+        Return a sequence for given indiividual suitable for model of children list.
+        parameter:
+            - indi : the child as individual
+        '''
+        if indi.gender == "male":
+            sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
+        elif indi.gender == "female":
+            sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
+        else:
+            sex_picture = None
+        year_birth_death = ""
+        if indi.birthDate:
+            year_birth_death += str(indi.birthDate.year)
+        if indi.deathDate:
+            year_birth_death += "-" + str(indi.deathDate.year)
+        row = [sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi]
+        return row
+
+
 
     def on_save_clicked_event(self, widget, data):
-        not_yet_implemented()
+        # change identity of the family
+        
+        # change the marriage status
+        model, iter = self.edit_marriage.get_selector().get_selected(0)
+        marriage =  model.get(iter,0)[0]
+        if marriage == "no mention":
+            param_marriage = False
+        elif marriage == "married":
+            param_marriage = True        
+        else:
+            logging.error("unexpexted marriage value from picker [" + str(marriage) + "], value not set")
+            param_marriage = self.family.married
+        
+
+        model, iter = self.edit_divorce.get_selector().get_selected(0)
+        divorce =  model.get(iter,0)[0]
+        if divorce == "not divorced":
+            param_divorce = False
+        elif divorce == "divorced":
+            param_divorce = True        
+        else:
+            logging.error("unexpexted divorce value from picker [" + str(divorce) + "], value not set")
+            param_divorce = self.family.divorced
+        
+        
+        if self.marriagedate_enable.get_active():
+            y,m,d = self.edit_marriage_date.get_date()
+            param_marriage_date = datetime.date(y,m+1,d) 
+        else:
+            param_marriage_date = None
+            
+        param_marriage_place = self.edit_marriage_place.get_text()
+        
+        if self.divorcedate_enable.get_active():
+            y,m,d = self.edit_divorce_date.get_date()
+            param_divorce_date = datetime.date(y,m+1,d) 
+        else:
+            param_divorce_date = None
+        
+        self.zcore.update_marriage_status(self.family, married=param_marriage, marriage_date=param_marriage_date, marriage_place=param_marriage_place, divorced=param_divorce, divorce_date=param_divorce_date)
+        # change children list
+        iter = self.model.get_iter_first()
+        children_list = []
+        while iter:        
+            indi, = self.model.get(iter,5)
+            children_list.append(indi)
+            iter = self.model.iter_next(iter)
+        
+        self.zcore.update_children_list(self.family, children_list)
+        
+        # after all job done, save the database
+        self.zcore.save_database(self.database_filename)
+        
+        self.pop_and_show_family()        
         
     def on_cancel_clicked_event(self, widget, data):
         self.pop_and_show_family()
@@ -1230,6 +1304,31 @@ class FamilyView(MaegenStackableWindow):
 
 
     def _on_add_child_menu_clicked(self, widget, data):
+        selector = hildon.TouchSelector()
+        model = gtk.ListStore(str, object)
+        logging.debug("creating list for child selection...")
+        
+        for indi in filter(lambda child: child.mother is None and child.father is None, self.zcore.retrieve_all_individuals()):
+            model.append([str(indi), indi])
+                    
+        selector.append_column(model, gtk.CellRendererText(), text=0)
+        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)            
+        
+        dialog = hildon.PickerDialog(self)
+        dialog.set_transient_for(self)
+        dialog.set_title("Select an individual")
+        dialog.set_done_label("add as child")
+        dialog.set_selector(selector)
+        dialog.show_all()
+        self.selected_individual = None
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            model, iter = selector.get_selected(0)
+            indi = model.get(iter, 1)[0]
+            dialog.destroy()
+            self.model.append(self._create_row_for_children_list_model(indi))
+        else:
+            dialog.destroy()
         
         
     def _on_remove_child_menu_clicked(self, widget, data):
@@ -1593,22 +1692,8 @@ class FamilyView(MaegenStackableWindow):
         self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str, str, object)
         for indi in self.family.children:
             
-            if indi.gender == "male":
-                sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
-            elif indi.gender == "female":
-                sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
-            else:
-                sex_picture = None
-                                
-
-            year_birth_death = ""
-            if indi.birthDate:
-                year_birth_death += str(indi.birthDate.year)
-        
-            if indi.deathDate:
-                year_birth_death += "-" + str(indi.deathDate.year)
-                
-            self.model.append([sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi])   
+            row = self._create_row_for_children_list_model(indi)
+            self.model.append(row)   
         
         self.view = gtk.TreeView(self.model)     
         self.view.set_headers_visible(True)           
@@ -2174,11 +2259,11 @@ class IndividualView(MaegenStackableWindow):
                 other = family.wife
             else:
                 other = family.husband            
-            union.pack_start(self.justifyLeft(gtk.Label("with")))
+            union.pack_start(self.justifyLeft(gtk.Label("with")), expand=False)
             if other:                                
                 union.pack_start(self._create_partner_widget(other),expand=False)
             else:
-                union.pack_start(self.justifyLeft(gtk.Label("unknown partner")))            
+                union.pack_start(self.justifyLeft(gtk.Label("unknown partner")), expand=False)            
             one_family_pane.add(union)
             # children
             children = gtk.VBox()

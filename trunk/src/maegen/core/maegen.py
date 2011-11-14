@@ -261,14 +261,39 @@ class Maegen(object):
         old = individual.mother
         self.set_mother(individual, None)
         return old    
+    
+    
+    def remove_parents(self,individual):
+        '''
+        Remove both fatehr and mother of a given individual while ensuring
+        database correctness.
+        '''
+        
+        old_father = individual.father
+        old_mother = individual.mother
+        individual.father = None
+        individual.mother = None
+        
+        if old_father or old_mother :
+            # ensure correctness of database 
+        
+            # remove from the old family
+            family = self.get_family_with_child(individual)
+            if family:
+                if family.husband == old_father or family.wife == old_mother:
+                    family.children.remove(individual)
+        
 
     def set_parents(self, individual, father, mother):
         '''
-        Make an individual children of a given father and mother
+        Make an individual children of a given father and mother.
+        Parameter:
+            - father : must not be None
+            - mother : must not be None
         '''    
         old_father = individual.father
         old_mother = individual.mother
-        individual.fathe = father
+        individual.father = father
         individual.mother = mother
         
         if old_father or old_mother:
@@ -401,6 +426,35 @@ class Maegen(object):
         '''
         indi_without_parents = filter(lambda x: x.father is None and x.mother is None, self.database.individuals)
         return indi_without_parents
+    
+    def update_marriage_status(self, family, married, marriage_date, marriage_place, divorced, divorce_date):
+        '''
+        Update information about  marriage status of the given family.
+        Parameter:
+            - divorced : requires married to be True
+        '''
+        if married:
+            family.update_marriage(marriage_date, marriage_place)
+        else:
+            family.delete_marriage()
+        if divorced and married:
+            family.update_divorce(divorce_date)
+        else:
+            family.delete_divorce()
+        
+    def update_children_list(self, family, children_list):
+        '''
+        Update the family children list with the given children list.
+        The method ensure correctness of the database
+        '''
+        
+        for child in family.children:
+            if child not in children_list:
+                self.remove_parents(child)                
+        for child in children_list:
+            if child not in family.children:
+                self.make_child(child, family)
+                
 
     def get_maegen_storage_dir(self):
         '''
@@ -496,6 +550,25 @@ class Family(object):
         self.married_place = ""
         
         self.children = []
-                
+             
+    def __str__(self, *args, **kwrgs):
+        return str(self.husband)  + " with " + str(self.wife)                
 
+    def update_marriage(self, marriage_date, marriage_place):
+        self.married = True
+        self.married_date = marriage_date
+        self.married_place = marriage_place
+    
+    def delete_marriage(self):
+        self.married = False
+        self.married_date = None
+        self.married_place = ""
+    
+    def update_divorce(self, divorced_date):
+        self.divorced = True
+        self.divorced_date = divorced_date
+    
+    def delete_divorce(self):
+        self.divorced = False
+        self.divorced_date = None
             
