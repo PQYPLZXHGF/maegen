@@ -1776,6 +1776,12 @@ class IndividualView(MaegenStackableWindow):
             editBtn.set_label("Edit");
             editBtn.connect("clicked", self._on_edit_menu_clicked, None)
             menu.append(editBtn)   
+            
+            editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
+            editBtn.set_label("Descendants");
+            editBtn.connect("clicked", self._on_descednants_menu_clicked, None)
+            menu.append(editBtn)   
+            
         
 
         
@@ -1789,6 +1795,12 @@ class IndividualView(MaegenStackableWindow):
         menu.show_all()
         self.set_app_menu(menu)  
 
+    def _on_descednants_menu_clicked(self, widget, data):
+        window = GenealogicalTreeView(self.individual)
+        self.program.add_window(window)
+        window.show_all()
+
+    
     def pop_and_show_individual(self):
         hildon.WindowStack.get_default().pop_1()
         # open the clicked parent
@@ -2491,4 +2503,64 @@ class BugReportView(MaegenStackableWindow):
         self.submit_issue_callback(subject, body)
 
 
+class GenealogicalTreeView(MaegenStackableWindow):
+    '''
+    This pane dispoay the genealogical data as a tree
+    '''
+    def __init__(self, individual):
+        self.root = individual
+        MaegenStackableWindow.__init__(self, title="Tree")
 
+    def draw_face(self, x, y):
+        self.drawing_area.window.draw_rectangle(self.gc, False, x, y, 80, 70)
+        self.drawing_area.window.draw_rectangle(self.gc, True, x + 10, y + 10, 20, 20)
+        self.drawing_area.window.draw_rectangle(self.gc, True, x + 50, y + 10, 20, 20)
+        self.drawing_area.window.draw_rectangle(self.gc, True, x + 20, y + 50, 40, 10)
+
+
+    def init_center_view(self, centerview):
+        self.drawing_area = gtk.DrawingArea()  
+        self.drawing_area.set_size_request(max([800,self.compute_width()]), max([400,self.compute_height()]))  
+        self.drawing_area.connect("expose-event", self.area_expose_cb)        
+        centerview.add(self.drawing_area)
+
+    def area_expose_cb(self, area, event):
+        self.gc = self.style.fg_gc[gtk.STATE_NORMAL]
+        self.draw_face(400, 200)
+        self.draw_face(0, 0)
+        self.draw_face(600, 400)
+        
+    def compute_width(self):
+        WIDTH_FOR_INDI = 40
+        HORIZONTAL_SPACE=10
+        def size_for_individual(indi):
+            n = children_count(indi)
+            if n == 0 :
+                return WIDTH_FOR_INDI
+            else:
+                resu = n * WIDTH_FOR_INDI + (n-1) * HORIZONTAL_SPACE            
+                for child in children_of(indi):
+                    size_for_child = size_for_individual(child)
+                    if  size_for_child > WIDTH_FOR_INDI:
+                        resu += size_for_child - WIDTH_FOR_INDI                                             
+                return resu
+        return size_for_child(self.root)
+
+    def compute_height(self):
+        HEIGHT_FOR_INDI = 20
+        VERTICAL_SPACE = 10
+        def depth_for_individual(indi):
+            if children_count(indi) == 0:
+                return 1
+            else:                
+                depth_of_children = map(depth_for_individual,children_of(indi))
+                depth_from_indi = map(lambda child_depth: child_depth+1, depth_of_children)
+                return max(depth_from_indi)
+        
+        depth = depth_for_individual(self.root)
+        return  depth *  HEIGHT_FOR_INDI + ( depth - 1) * VERTICAL_SPACE
+            
+            
+        
+        
+      
