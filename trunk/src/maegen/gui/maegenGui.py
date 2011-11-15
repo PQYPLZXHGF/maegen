@@ -1850,20 +1850,20 @@ class IndividualView(MaegenStackableWindow):
                             self.zcore.remove_father(self.individual)
         else:
             if self.edit_father is None and self.edit_mother is None:
-                if not self.father_enabled.get_active() and  not self.mother_enabled.get_active():
-                    if self.family.father and self.family.mother:
+                if self.individual.father and self.individual.mother:
+                    if not self.father_enabled.get_active() and  not self.mother_enabled.get_active():                    
                         self.zcore.remove_parents(self.individual)
                     else:
-                        if self.family.father:
+                        if not self.father_enabled.get_active():
                             self.zcore.remove_father(self.individual)
-                        elif self.family.mother:
+                        elif not self.mother_enabled.get_active():
                             self.zcore.remove_mother(self.individual)                            
                 else:
-                    if not self.father_enabled.get_active():
-                        if self.individual.father: 
+                    if self.individual.father: 
+                        if not self.father_enabled.get_active():                    
                             self.zcore.remove_father(self.individual)
-                    elif not self.mother_enabled.get_active():
-                        if self.individual.mother:
+                    elif self.individual.mother:
+                        if not self.mother_enabled.get_active():                        
                             self.zcore.remove_mother(self.individual)
                         
             else:
