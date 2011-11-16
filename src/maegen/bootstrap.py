@@ -50,7 +50,7 @@ LEVELS = {'debug': logging.DEBUG,
 
 
 def showGui(mock=False):
-    from maegen.gui.maegenGui import MaegenGui 
+    from maegen.gui.hildon.maegenGui import MaegenGui 
     gui = MaegenGui(mock)
     gui.run()
     
