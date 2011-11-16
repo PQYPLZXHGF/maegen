@@ -39,13 +39,30 @@ def get_gender_image(individual):
     Return a gtk.Image according to gender of given individual.
     '''
     image = None
+    pixbuf = get_gender_pixbuf(individual)
+    if pixbuf:
+        image = gtk.Image()
+        image.set_from_pixbuf(pixbuf)
+    return image
+
+def get_gender_pixbuf(individual):
+    '''
+    Return a pixbuf according to gender of given individual.
+    '''
+    pixbuf = None
     if individual.gender:
         if individual.gender == "male":
-            pixbuf = gtk.gdk.pixbuf_new_from_file("male.png")
-            image = gtk.Image()
-            image.set_from_pixbuf(pixbuf)
+            pixbuf = gtk.gdk.pixbuf_new_from_file("male.png")           
         elif individual.gender == "female":
             pixbuf = gtk.gdk.pixbuf_new_from_file("female.png")
+    return pixbuf
+
+def fill_widget_with_logo(centerview):
+    pixbuf = gtk.gdk.pixbuf_new_from_file("maegen-logo.jpg")
+    for i in range(1,4):
+        hbox = gtk.HBox()
+        for j in range(1,5):                
             image = gtk.Image()
             image.set_from_pixbuf(pixbuf)
-    return image
+            hbox.add(image)
+        centerview.add(hbox)

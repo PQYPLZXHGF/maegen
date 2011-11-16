@@ -51,7 +51,7 @@ from Queue import *
 
 import mock
 
-from maegen.gui.gtk.utils import get_gender_image
+from maegen.gui.gtk.utils import get_gender_image, get_gender_pixbuf, fill_widget_with_logo
 from maegen.gui.hildon.utils import show_about_dialog, MaegenStackableWindow
 from maegen.core import maegen
 
@@ -258,16 +258,9 @@ class IndividualListView(MaegenStackableWindow):
         OOCUPATION_COLUMN_INDEX = 5
         INDIVIDUAL_OBJECT_COLUMN_INDEX = 6
         self.model = gtk.ListStore(gtk.gdk.Pixbuf, str, str, str, str, str, object)
-        for indi in self.zcore.retrieve_all_individuals():
-            
-            if indi.gender == "male":
-                sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
-            elif indi.gender == "female":
-                sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
-            else:
-                sex_picture = None
+        for indi in self.zcore.retrieve_all_individuals():            
+            sex_picture = get_gender_pixbuf(indi)
                                 
-
             year_birth_death = ""
             if indi.birthDate:
                 year_birth_death += str(indi.birthDate.year)
@@ -461,12 +454,7 @@ class BranchListView(MaegenStackableWindow):
         window.show_all()
 
     def _add_indivdual_in_tree(self, parent, indi, level=1):
-        if indi.gender == "male":
-            sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
-        elif indi.gender == "female":
-            sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
-        else:
-            sex_picture = None
+        sex_picture = get_gender_pixbuf(indi)
         year_birth_death = ""
         if indi.birthDate:
             year_birth_death += str(indi.birthDate.year)
@@ -523,7 +511,7 @@ class FamilyListView(MaegenStackableWindow):
             wife_year_birth_death = ""            
             
             if family.husband:
-                husb_picture = gtk.gdk.pixbuf_new_from_file("male.png")                            
+                husb_picture = get_gender_pixbuf(family.husband)                            
                 indi = family.husband                           
                 husb_full_name = str(indi)
                 if indi.birthDate:
@@ -532,7 +520,7 @@ class FamilyListView(MaegenStackableWindow):
                     husb_year_birth_death += "-" + str(indi.deathDate.year)
                
             if family.wife :
-                wife_picture = gtk.gdk.pixbuf_new_from_file("female.png")
+                wife_picture = get_gender_pixbuf(family.wife)
                 indi = family.wife        
                 wife_full_name = str(indi)                   
                 if indi.birthDate:
@@ -1011,12 +999,8 @@ class FamilyView(MaegenStackableWindow):
         parameter:
             - indi : the child as individual
         '''
-        if indi.gender == "male":
-            sex_picture = gtk.gdk.pixbuf_new_from_file("male.png")
-        elif indi.gender == "female":
-            sex_picture = gtk.gdk.pixbuf_new_from_file("female.png")
-        else:
-            sex_picture = None
+        
+        sex_picture = get_gender_pixbuf(indi)
         year_birth_death = ""
         if indi.birthDate:
             year_birth_death += str(indi.birthDate.year)
@@ -2155,14 +2139,7 @@ class SplashScreenView(MaegenStackableWindow):
     '''
 
     def init_center_view(self, centerview):
-        pixbuf = gtk.gdk.pixbuf_new_from_file("maegen-logo.jpg")
-        for i in range(1,4):
-            hbox = gtk.HBox()
-            for j in range(1,5):                
-                image = gtk.Image()
-                image.set_from_pixbuf(pixbuf)
-                hbox.add(image)
-            centerview.add(hbox)
+        fill_widget_with_logo(centerview)
 
 
 
