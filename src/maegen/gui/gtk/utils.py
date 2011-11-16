@@ -21,3 +21,31 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+'''
+Created on Nov 16, 2011
+
+@author: maemo
+'''
+
+import gtk
+
+from maegen.common import version
+
+version.getInstance().submitRevision("$Revision: 155 $")
+
+def get_gender_image(individual):
+    '''
+    Return a gtk.Image according to gender of given individual.
+    '''
+    image = None
+    if individual.gender:
+        if individual.gender == "male":
+            pixbuf = gtk.gdk.pixbuf_new_from_file("male.png")
+            image = gtk.Image()
+            image.set_from_pixbuf(pixbuf)
+        elif individual.gender == "female":
+            pixbuf = gtk.gdk.pixbuf_new_from_file("female.png")
+            image = gtk.Image()
+            image.set_from_pixbuf(pixbuf)
+    return image
