@@ -2239,6 +2239,7 @@ class GenealogicalTreeView(MaegenStackableWindow):
         
     def size_for_children_row(self, n):
         return n * self.WIDTH_FOR_INDI + (n-1) * self.HORIZONTAL_SPACE    
+    
     def size_for_individual(self, indi):
             n = self.zcore.children_count(indi)
             if n == 0 :
@@ -2260,7 +2261,7 @@ class GenealogicalTreeView(MaegenStackableWindow):
         children = self.zcore.retrieve_children(individual)
         if len(children) > 0:
             self.drawing_area.window.draw_line(self.gc, x, y + self.HEIGHT_FOR_INDI, x, y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE / 2)            
-            children_row_space = self.size_for_children_row(n)
+            children_row_space = self.size_for_children_row(len(children))
             y_child_gen = y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE
             x_child_gen = x - ( children_row_space / 2 ) + (self.WIDTH_FOR_INDI / 2 )
             self.drawing_area.window.draw_line(self.gc, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2, x_child_gen + children_row_space -self.WIDTH_FOR_INDI, y_child_gen - self.VERTICAL_SPACE / 2)
@@ -2271,16 +2272,19 @@ class GenealogicalTreeView(MaegenStackableWindow):
                 if real_size_for_child > self.WIDTH_FOR_INDI:
                     if first_child:
                         # shift to the left
-                        pass                            
+                        x_child_gen += self.WIDTH_FOR_INDI / 2
+                        x_child_gen -= real_size_for_child / 2
                     else:
-                        x_child_gen -= self.WIDTH_FOR_INDI + self.HORIZONTAL_SPACE
+                        x_child_gen -= self.WIDTH_FOR_INDI / 2 
                         x_child_gen += real_size_for_child / 2
-                        next_x_child = x_child_gen + real_size_for_child / 2 
+                    next_x_child = x_child_gen + ( real_size_for_child / 2 ) + self.HORIZONTAL_SPACE + ( self.WIDTH_FOR_INDI / 2 )                        
                 else:
-                    next_x_child = self.WIDTH_FOR_INDI +  self.HORIZONTAL_SPACE         
+                    next_x_child = x_child_gen + self.WIDTH_FOR_INDI +  self.HORIZONTAL_SPACE         
                 self.drawing_area.window.draw_line(self.gc, x_child_gen,  y_child_gen, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2)
-                self.draw_tree(child, x_child_gen, y_child_gen)                
-                x_child_gen += next_x_child 
+                self.draw_tree(child, x_child_gen, y_child_gen)
+                first_child = False
+                                             
+                x_child_gen = next_x_child 
             
                   
             
