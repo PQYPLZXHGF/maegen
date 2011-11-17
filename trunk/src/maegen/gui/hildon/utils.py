@@ -81,7 +81,7 @@ def __default_exception_handler(type, value, tb, gtk_sync = False):
             gtk.gdk.threads_leave()
 
        
-def _call_handled_method(method, *arg):
+def call_handled_method(method, *arg):
        '''
        This utility function catch error on a gentle way
        ''' 

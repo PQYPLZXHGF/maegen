@@ -4,7 +4,7 @@
 #    to store genealogical data including individuals and relational
 #    informations. Maegen can be used to browse collected data on the
 #    device but the main goal is its capabilitie to export the dtabase
-#    in a GEDCOM file which can be imported into any desktop genealocial
+#    in a GEDCOM file which can be imported into any desktop genealogical
 #    application.
 #
 #    Copyright (C) 2011  Thierry Bressure
@@ -52,7 +52,7 @@ from Queue import *
 import mock
 
 from maegen.gui.gtk.utils import get_gender_image, get_gender_pixbuf, fill_widget_with_logo
-from maegen.gui.hildon.utils import show_about_dialog, MaegenStackableWindow
+from maegen.gui.hildon.utils import show_about_dialog, call_handled_method, not_yet_implemented, MaegenStackableWindow
 from maegen.core import maegen
 
 from maegen.common import version
@@ -2237,13 +2237,14 @@ class GenealogicalTreeView(MaegenStackableWindow):
         self.gc = self.style.fg_gc[gtk.STATE_NORMAL]
         self.draw_tree(self.root, self.drawing_area_width / 2, 0)
         
-        
+    def size_for_children_row(self, n):
+        return n * self.WIDTH_FOR_INDI + (n-1) * self.HORIZONTAL_SPACE    
     def size_for_individual(self, indi):
             n = self.zcore.children_count(indi)
             if n == 0 :
                 return self.WIDTH_FOR_INDI
             else:
-                resu =  n * self.WIDTH_FOR_INDI + (n-1) * self.HORIZONTAL_SPACE      
+                resu = self.size_for_children_row(n)       
                 for child in self.zcore.retrieve_children(indi):
                     size_for_child = self.size_for_individual(child)
                     if  size_for_child > self.WIDTH_FOR_INDI:
@@ -2259,17 +2260,27 @@ class GenealogicalTreeView(MaegenStackableWindow):
         children = self.zcore.retrieve_children(individual)
         if len(children) > 0:
             self.drawing_area.window.draw_line(self.gc, x, y + self.HEIGHT_FOR_INDI, x, y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE / 2)            
-            children_row_space = self.size_for_individual(individual)
+            children_row_space = self.size_for_children_row(n)
             y_child_gen = y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE
             x_child_gen = x - ( children_row_space / 2 ) + (self.WIDTH_FOR_INDI / 2 )
             self.drawing_area.window.draw_line(self.gc, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2, x_child_gen + children_row_space -self.WIDTH_FOR_INDI, y_child_gen - self.VERTICAL_SPACE / 2)
-            
+            first_child = True
             for child in children:
                 # TODO if space required for this child is greater then adjust the horizontal position
-                
+                real_size_for_child = self.size_for_individual(child)                
+                if real_size_for_child > self.WIDTH_FOR_INDI:
+                    if first_child:
+                        # shift to the left
+                        pass                            
+                    else:
+                        x_child_gen -= self.WIDTH_FOR_INDI + self.HORIZONTAL_SPACE
+                        x_child_gen += real_size_for_child / 2
+                        next_x_child = x_child_gen + real_size_for_child / 2 
+                else:
+                    next_x_child = self.WIDTH_FOR_INDI +  self.HORIZONTAL_SPACE         
                 self.drawing_area.window.draw_line(self.gc, x_child_gen,  y_child_gen, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2)
                 self.draw_tree(child, x_child_gen, y_child_gen)                
-                x_child_gen += self.WIDTH_FOR_INDI +  self.HORIZONTAL_SPACE
+                x_child_gen += next_x_child 
             
                   
             
