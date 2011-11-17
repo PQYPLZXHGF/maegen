@@ -1588,7 +1588,7 @@ class IndividualView(MaegenStackableWindow):
         self.set_app_menu(menu)  
 
     def _on_descednants_menu_clicked(self, widget, data):
-        window = GenealogicalTreeView(self.individual)
+        window = GenealogicalTreeView(self.zcore, self.individual)
         self.program.add_window(window)
         window.show_all()
 
@@ -1763,9 +1763,9 @@ class IndividualView(MaegenStackableWindow):
         selector.append_column(model, gtk.CellRendererText(), text=0)
         selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
         def __enable_prent_checkbox(column , user_data):
-            if parent == "father":
+            if parent == "father" and (self.individual.father or self.edit_father):
                 self.father_enabled.set_active(True)    
-            elif parent == "mother":
+            elif parent == "mother" and (self.individual.mother or self.edit_mother):
                 self.mother_enabled.set_active(True)
             else:
                 logging.error("unexpected parent parameter " + str(parent)) 
@@ -2203,60 +2203,92 @@ class BugReportView(MaegenStackableWindow):
 
 class GenealogicalTreeView(MaegenStackableWindow):
     '''
-    This pane dispoay the genealogical data as a tree
+    This pane display the genealogical data as a tree
     '''
-    def __init__(self, individual):
+    
+
+    
+    def __init__(self, zcore, individual, show_spouse=False):
         self.root = individual
+        self.zcore = zcore
+        self.show_spouse=show_spouse
+        self.WIDTH_FOR_INDI = 150
+        self.HORIZONTAL_SPACE=50
+        self.HEIGHT_FOR_INDI = 70
+        self.VERTICAL_SPACE = 100
         MaegenStackableWindow.__init__(self, title="Tree")
 
-    def draw_face(self, x, y):
-        self.drawing_area.window.draw_rectangle(self.gc, False, x, y, 80, 70)
-        self.drawing_area.window.draw_rectangle(self.gc, True, x + 10, y + 10, 20, 20)
-        self.drawing_area.window.draw_rectangle(self.gc, True, x + 50, y + 10, 20, 20)
-        self.drawing_area.window.draw_rectangle(self.gc, True, x + 20, y + 50, 40, 10)
+    def draw_individual(self, indi, x, y):        
+        top_left = (x-self.WIDTH_FOR_INDI / 2,y)        
+        self.pangolayout.set_text(str(indi))
+        self.drawing_area.window.draw_layout(self.gc, top_left[0] + 1 , top_left[1] + 1, self.pangolayout)
 
 
     def init_center_view(self, centerview):
-        self.drawing_area = gtk.DrawingArea()  
-        self.drawing_area.set_size_request(max([800,self.compute_width()]), max([400,self.compute_height()]))  
+        self.drawing_area = gtk.DrawingArea()
+        self.drawing_area_width = max([800,self.compute_width()]) 
+        self.drawing_area_height = max([400,self.compute_height()])          
+        self.drawing_area.set_size_request(self.drawing_area_width, self.drawing_area_height)  
+        self.pangolayout = self.drawing_area.create_pango_layout("")
         self.drawing_area.connect("expose-event", self.area_expose_cb)        
         centerview.add(self.drawing_area)
 
     def area_expose_cb(self, area, event):
         self.gc = self.style.fg_gc[gtk.STATE_NORMAL]
-        self.draw_face(400, 200)
-        self.draw_face(0, 0)
-        self.draw_face(600, 400)
+        self.draw_tree(self.root, self.drawing_area_width / 2, 0)
         
-    def compute_width(self):
-        WIDTH_FOR_INDI = 40
-        HORIZONTAL_SPACE=10
-        def size_for_individual(indi):
-            n = children_count(indi)
+        
+    def size_for_individual(self, indi):
+            n = self.zcore.children_count(indi)
             if n == 0 :
-                return WIDTH_FOR_INDI
+                return self.WIDTH_FOR_INDI
             else:
-                resu = n * WIDTH_FOR_INDI + (n-1) * HORIZONTAL_SPACE            
-                for child in children_of(indi):
-                    size_for_child = size_for_individual(child)
-                    if  size_for_child > WIDTH_FOR_INDI:
-                        resu += size_for_child - WIDTH_FOR_INDI                                             
+                resu =  n * self.WIDTH_FOR_INDI + (n-1) * self.HORIZONTAL_SPACE      
+                for child in self.zcore.retrieve_children(indi):
+                    size_for_child = self.size_for_individual(child)
+                    if  size_for_child > self.WIDTH_FOR_INDI:
+                        resu += size_for_child - self.WIDTH_FOR_INDI                                             
                 return resu
-        return size_for_child(self.root)
+    
+    def draw_tree(self, individual, x, y):
+        '''
+        Draw the individual at the given position on the drawning area
+        '''
+        self.draw_individual(individual, x, y)
+        # is there any child ?
+        children = self.zcore.retrieve_children(individual)
+        if len(children) > 0:
+            self.drawing_area.window.draw_line(self.gc, x, y + self.HEIGHT_FOR_INDI, x, y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE / 2)            
+            children_row_space = self.size_for_individual(individual)
+            y_child_gen = y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE
+            x_child_gen = x - ( children_row_space / 2 ) + (self.WIDTH_FOR_INDI / 2 )
+            self.drawing_area.window.draw_line(self.gc, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2, x_child_gen + children_row_space -self.WIDTH_FOR_INDI, y_child_gen - self.VERTICAL_SPACE / 2)
+            
+            for child in children:
+                # TODO if space required for this child is greater then adjust the horizontal position
+                
+                self.drawing_area.window.draw_line(self.gc, x_child_gen,  y_child_gen, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2)
+                self.draw_tree(child, x_child_gen, y_child_gen)                
+                x_child_gen += self.WIDTH_FOR_INDI +  self.HORIZONTAL_SPACE
+            
+                  
+            
+        
+    def compute_width(self):    
+        return self.size_for_individual(self.root)
 
     def compute_height(self):
-        HEIGHT_FOR_INDI = 20
-        VERTICAL_SPACE = 10
+
         def depth_for_individual(indi):
-            if children_count(indi) == 0:
+            if self.zcore.children_count(indi) == 0:
                 return 1
             else:                
-                depth_of_children = map(depth_for_individual,children_of(indi))
+                depth_of_children = map(depth_for_individual,self.zcore.retrieve_children(indi))
                 depth_from_indi = map(lambda child_depth: child_depth+1, depth_of_children)
                 return max(depth_from_indi)
         
         depth = depth_for_individual(self.root)
-        return  depth *  HEIGHT_FOR_INDI + ( depth - 1) * VERTICAL_SPACE
+        return  depth *  self.HEIGHT_FOR_INDI + ( depth - 1) * self.VERTICAL_SPACE
             
             
         
