@@ -214,6 +214,27 @@ class Maegen(object):
         
         return len(set(map(lambda indi: indi.name.upper(),self.database.individuals)))
 
+    def children_count(self, individual):
+        '''
+        Return the number of children for a given individual.
+        Every family where the individual is a spouse are candidate to children count.
+        '''
+        result = 0
+        for family in self.get_families_for(individual):
+            result += family.children_count()
+        return result
+    
+    
+    def retrieve_children(self, individual):
+        '''
+        Return children for a given individual.
+        Every family where the individual is a spouse are candidate to provide children.
+        '''
+        result = []
+        for family in self.get_families_for(individual):
+            result.extend(family.children)
+        return result
+    
     def create_new_individual(self, name="inconnu", firstname="inconnu"):
         '''
         Create a new individual and add it to the database
@@ -571,4 +592,7 @@ class Family(object):
     def delete_divorce(self):
         self.divorced = False
         self.divorced_date = None
+        
+    def children_count(self):
+        return len(self.children)
             
