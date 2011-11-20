@@ -2215,9 +2215,15 @@ class GenealogicalTreeView(MaegenStackableWindow):
         self.HORIZONTAL_SPACE=50
         self.HEIGHT_FOR_INDI = 70
         self.VERTICAL_SPACE = 100
+   
         MaegenStackableWindow.__init__(self, title="Tree")
 
     def draw_individual(self, indi, x, y):        
+        '''
+        Parameter:
+            - indi: the individual
+            - x,y : the center top of the individual node
+        '''
         top_left = (x-self.WIDTH_FOR_INDI / 2,y)      
         self.drawing_area.window.draw_rectangle(self.gc, False, top_left[0], top_left[1], self.WIDTH_FOR_INDI, self.HEIGHT_FOR_INDI)
         self.pangolayout.set_text(str(indi))
@@ -2226,9 +2232,8 @@ class GenealogicalTreeView(MaegenStackableWindow):
 
     def init_center_view(self, centerview):
         self.drawing_area = gtk.DrawingArea()
-        self.real_width, self.root_offset = self.compute_width()
-        logging.debug("root offset " + str(self.root_offset))
-        self.drawing_area_width = max([800, self.real_width])  # poor man solution to drawing issue
+        self.real_width = self.compute_width()
+        self.drawing_area_width = max([800, self.real_width])
         self.real_height = self.compute_height() 
         self.drawing_area_height = max([400,self.real_height])          
         self.drawing_area.set_size_request(self.drawing_area_width, self.drawing_area_height)  
@@ -2237,94 +2242,66 @@ class GenealogicalTreeView(MaegenStackableWindow):
         centerview.add(self.drawing_area)
 
     def area_expose_cb(self, area, event):
-        self.gc = self.style.fg_gc[gtk.STATE_NORMAL]        
-        self.drawing_area.window.draw_rectangle(self.gc, False,self.drawing_area_width / 2 + self.root_offset - self.real_width/2, 0, self.real_width, self.real_height )
-        self.draw_tree(self.root, self.drawing_area_width / 2 + self.root_offset, 0, self.root_offset)
-        
+            self.gc = self.style.fg_gc[gtk.STATE_NORMAL]        
+            self.drawing_area.window.draw_rectangle(self.gc, False,self.drawing_area_width / 2  - self.real_width/2, 0, self.real_width, self.real_height )
+            self.draw_tree(self.root, 0, self.drawing_area_width, 0)
+            
     def size_for_children_row(self, n):
         return n * self.WIDTH_FOR_INDI + (n-1) * self.HORIZONTAL_SPACE    
     
     def size_for_individual(self, indi):
         '''
-        Compute the width of the tree with the given individual as root and the offset. The offset is use
-        to set the root node position. The tree is rarely well balanced so the root node may not be drawn
-        in the center of the drawing area and a offset must be apply to fit the tree in the drawing area.
-        following tuple
-            - width of the tree
-            - offset of the position of the root
+        Compute the width of the tree with the given individual as root
         '''
         logging.debug("compute size required by " + str(indi))
         n = self.zcore.children_count(indi)
-        offset = 0
-        resu = self.WIDTH_FOR_INDI
-        if n >  0 :
-            resu = self.size_for_children_row(n)
-            child_index = 0   
-        
-            if n % 2 == 0:
-                middle_index = n / 2.0
-            else:
-                middle_index = (n / 2) + 1    
-            logging.debug("temporary size is " + str(resu))
-            logging.debug("adjusting with size required by child...")
+        if n == 0:
+            logging.debug("No child")
+            resu = self.WIDTH_FOR_INDI
+        else:
+            logging.debug("has child, include children size")
+            resu = 0
             for child in self.zcore.retrieve_children(indi):
-                    logging.debug("child " + str(child) + "...")
-                    child_index +=1                    
-                    size_for_child, offset_for_child = self.size_for_individual(child)
-                    logging.debug("child " + str(child) + " requires " + str(size_for_child) + " and offset " + str(offset_for_child))
-                    if  size_for_child > self.WIDTH_FOR_INDI or True:
-                        # grow the size required
-                        offset_for_current_child = size_for_child - self.WIDTH_FOR_INDI                        
-                        resu +=  offset_for_current_child
-                        # adjust the offset                                            
-                        if child_index < middle_index:
-                            # on the left so shift the root the right                                                        
-                            offset += offset_for_current_child 
-                        elif child_index > middle_index:
-                            # on the right so shift the root the left                            
-                            offset -= offset_for_current_child 
-                        # in all case add offset for current child tree
-                        offset += offset_for_child
-                    logging.debug("adjusted size become " + str(resu) + " and offset " + str(offset))                            
-        logging.debug("size required by " + str(indi) + " is " + str(resu) + " with offset " + str(offset))
-        return (resu, offset)
+                logging.debug("child " + str(child) + "...")
+                resu += self.size_for_individual(child)
+            resu += (n - 1) * self.HORIZONTAL_SPACE            
+            logging.debug("adjusted size become " + str(resu))                            
+        logging.debug("size required by " + str(indi) + " is " + str(resu))
+        return resu
     
-    def draw_tree(self, individual, x, y, offset):
+    def draw_tree(self, individual, left_corner_x,right_corner_x, top_y ):
         '''
-        Draw the individual at the given position on the drawning area
+        Draw the individual tree inside the given windows on the drawing area
+        Return the x position of the individual node
         '''
-        self.draw_individual(individual, x, y)
         # is there any child ?
         children = self.zcore.retrieve_children(individual)
-        if len(children) > 0:
-            self.drawing_area.window.draw_line(self.gc, x, y + self.HEIGHT_FOR_INDI, x, y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE / 2)            
-            children_row_space = self.size_for_children_row(len(children))
-            y_child_gen = y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE
-            x_child_gen = x - ( children_row_space / 2 ) + (self.WIDTH_FOR_INDI / 2 ) - offset
-            self.drawing_area.window.draw_line(self.gc, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2, x_child_gen + children_row_space -self.WIDTH_FOR_INDI, y_child_gen - self.VERTICAL_SPACE / 2)
-            first_child = True
+        if len(children) == 0:
+            # draw individual in given window, justify left
+            resu = left_corner_x + self.WIDTH_FOR_INDI / 2
+            self.draw_individual(individual, resu, top_y)
+        else:
+            row_left_x = None
+            row_right_x = None
+            child_left_corner_x = left_corner_x
             for child in children:
-                # TODO if space required for this child is greater then adjust the horizontal position
-                real_size_for_child, child_offset = self.size_for_individual(child)                
-                if real_size_for_child > self.WIDTH_FOR_INDI:
-                    if first_child:
-                        # shift to the left
-                        x_child_gen += self.WIDTH_FOR_INDI / 2
-                        x_child_gen -= real_size_for_child / 2  + child_offset
-                    else:
-                        x_child_gen -= self.WIDTH_FOR_INDI / 2 
-                        x_child_gen += real_size_for_child / 2 + child_offset
-                    next_x_child = x_child_gen - child_offset + ( real_size_for_child / 2 ) + self.HORIZONTAL_SPACE + ( self.WIDTH_FOR_INDI / 2 )                        
+                size_for_child = self.size_for_individual(child)
+                child_right_corner_x = child_left_corner_x + size_for_child
+                x = self.draw_tree(child, child_left_corner_x, child_right_corner_x, top_y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE)      
+                # draw the small vertical link
+                # TODO                
+                if row_left_x is None:
+                    row_left_x = x
                 else:
-                    next_x_child = x_child_gen + self.WIDTH_FOR_INDI +  self.HORIZONTAL_SPACE         
-                self.drawing_area.window.draw_line(self.gc, x_child_gen,  y_child_gen, x_child_gen, y_child_gen - self.VERTICAL_SPACE / 2)
-                self.draw_tree(child, x_child_gen, y_child_gen, child_offset)
-                first_child = False
-                                             
-                x_child_gen = next_x_child 
+                    row_riht_x = x
+                child_left_corner_x += size_for_child + self.HORIZONTAL_SPACE
+            # draw horizontal row
             
-                  
-            
+            # draw the small vertical link
+            resu = ( row_left_x + row_riht_x ) / 2
+            # draw the root node            
+            self.draw_individual(individual, resu, top_y)
+        return resu        
         
     def compute_width(self):    
         return self.size_for_individual(self.root)
