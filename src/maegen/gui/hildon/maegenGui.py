@@ -1071,7 +1071,7 @@ class FamilyView(MaegenStackableWindow):
 
 
     def init_bottom_button(self, bottomButtons):
-        logging.debug("init_bottom_button for FAmilyView...")
+        logging.debug("init_bottom_button for FamilyView...")
         if self.edit_mode: 
            logging.debug("in edit mode")
            save_btn = self.create_button("Save")
@@ -2123,15 +2123,6 @@ class IndividualView(MaegenStackableWindow):
         centerview.pack_start(frame, expand=False, padding=5)
 
     
-    
-        
-
-
-        
-
-             
-
-
 class SplashScreenView(MaegenStackableWindow):
     '''
     This is the first view of the application e.g. the main view.  
@@ -2225,7 +2216,7 @@ class GenealogicalTreeView(MaegenStackableWindow):
             - x,y : the center top of the individual node
         '''
         top_left = (x-self.WIDTH_FOR_INDI / 2,y)      
-        self.drawing_area.window.draw_rectangle(self.gc, False, top_left[0], top_left[1], self.WIDTH_FOR_INDI, self.HEIGHT_FOR_INDI)
+        #self.drawing_area.window.draw_rectangle(self.gc, False, top_left[0], top_left[1], self.WIDTH_FOR_INDI, self.HEIGHT_FOR_INDI)
         self.pangolayout.set_text(str(indi))
         self.drawing_area.window.draw_layout(self.gc, top_left[0] + 1 , top_left[1] + 1, self.pangolayout)
 
@@ -2236,14 +2227,14 @@ class GenealogicalTreeView(MaegenStackableWindow):
         self.drawing_area_width = max([800, self.real_width])
         self.real_height = self.compute_height() 
         self.drawing_area_height = max([400,self.real_height])          
-        self.drawing_area.set_size_request(self.drawing_area_width, self.drawing_area_height)  
+        self.drawing_area.set_size_request(self.drawing_area_width + 1, self.drawing_area_height + 1)  
         self.pangolayout = self.drawing_area.create_pango_layout("")
         self.drawing_area.connect("expose-event", self.area_expose_cb)        
         centerview.add(self.drawing_area)
 
     def area_expose_cb(self, area, event):
             self.gc = self.style.fg_gc[gtk.STATE_NORMAL]        
-            self.drawing_area.window.draw_rectangle(self.gc, False,self.drawing_area_width / 2  - self.real_width/2, 0, self.real_width, self.real_height )
+            #self.drawing_area.window.draw_rectangle(self.gc, False,self.drawing_area_width / 2  - self.real_width/2, 0, self.real_width, self.real_height )
             self.draw_tree(self.root, 0, self.drawing_area_width, 0)
             
     def size_for_children_row(self, n):
@@ -2284,21 +2275,25 @@ class GenealogicalTreeView(MaegenStackableWindow):
             row_left_x = None
             row_right_x = None
             child_left_corner_x = left_corner_x
+            top_y_for_child = top_y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE
+            y_for_horiz_row = top_y_for_child - self.VERTICAL_SPACE / 2            
             for child in children:
                 size_for_child = self.size_for_individual(child)
-                child_right_corner_x = child_left_corner_x + size_for_child
-                x = self.draw_tree(child, child_left_corner_x, child_right_corner_x, top_y + self.HEIGHT_FOR_INDI + self.VERTICAL_SPACE)      
+                child_right_corner_x = child_left_corner_x + size_for_child            
+                x = self.draw_tree(child, child_left_corner_x, child_right_corner_x, top_y_for_child)      
                 # draw the small vertical link
-                # TODO                
+                self.drawing_area.window.draw_line(self.gc, x,top_y_for_child,x, y_for_horiz_row)         
                 if row_left_x is None:
                     row_left_x = x
                 else:
-                    row_riht_x = x
+                    row_right_x = x
                 child_left_corner_x += size_for_child + self.HORIZONTAL_SPACE
             # draw horizontal row
-            
+            self.drawing_area.window.draw_line(self.gc,row_left_x,y_for_horiz_row, row_right_x,y_for_horiz_row)
+            #compute the root abscisse
+            resu = ( row_left_x + row_right_x ) / 2
             # draw the small vertical link
-            resu = ( row_left_x + row_riht_x ) / 2
+            self.drawing_area.window.draw_line(self.gc,resu,y_for_horiz_row, resu, y_for_horiz_row - self.VERTICAL_SPACE / 2)            
             # draw the root node            
             self.draw_individual(individual, resu, top_y)
         return resu        
