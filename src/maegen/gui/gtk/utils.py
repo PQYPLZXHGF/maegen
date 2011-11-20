@@ -66,3 +66,13 @@ def fill_widget_with_logo(centerview):
             image.set_from_pixbuf(pixbuf)
             hbox.add(image)
         centerview.add(hbox)
+        
+def get_life_date_str(indi):
+    year_birth_death = ""
+    if indi.birthDate:
+        year_birth_death += str(indi.birthDate.year)
+        
+    if indi.deathDate:
+        year_birth_death += "-" + str(indi.deathDate.year)
+        
+    return year_birth_death
