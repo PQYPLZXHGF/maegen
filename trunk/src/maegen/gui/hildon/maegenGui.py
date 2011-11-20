@@ -39,6 +39,7 @@ import threading
 import time
 import datetime
 from Queue import *
+import pango
 
 #import gdata.projecthosting.client
 #import gdata.projecthosting.data
@@ -51,7 +52,7 @@ from Queue import *
 
 import mock
 
-from maegen.gui.gtk.utils import get_gender_image, get_gender_pixbuf, fill_widget_with_logo
+from maegen.gui.gtk.utils import get_gender_image, get_gender_pixbuf, fill_widget_with_logo, get_life_date_str
 from maegen.gui.hildon.utils import show_about_dialog, call_handled_method, not_yet_implemented, MaegenStackableWindow
 from maegen.core import maegen
 
@@ -248,6 +249,8 @@ class IndividualListView(MaegenStackableWindow):
         menu.show_all()
         self.set_app_menu(menu)
 
+
+
     def init_center_view(self, centerview):
         SEX_PICTURE_COLUMN_INDEX = 0
         FIRSTNAME_COLUMN_INDEX = 1
@@ -260,12 +263,7 @@ class IndividualListView(MaegenStackableWindow):
         for indi in self.zcore.retrieve_all_individuals():            
             sex_picture = get_gender_pixbuf(indi)
                                 
-            year_birth_death = ""
-            if indi.birthDate:
-                year_birth_death += str(indi.birthDate.year)
-        
-            if indi.deathDate:
-                year_birth_death += "-" + str(indi.deathDate.year)
+            year_birth_death = get_life_date_str(indi)
                 
             self.model.append([sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi.occupation, indi])   
         
@@ -454,11 +452,7 @@ class BranchListView(MaegenStackableWindow):
 
     def _add_indivdual_in_tree(self, parent, indi, level=1):
         sex_picture = get_gender_pixbuf(indi)
-        year_birth_death = ""
-        if indi.birthDate:
-            year_birth_death += str(indi.birthDate.year)
-        if indi.deathDate:
-            year_birth_death += "-" + str(indi.deathDate.year)
+        year_birth_death = get_life_date_str(indi)
         parent_iter = self.model.append(parent, [str(level), sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi.occupation, indi])
         # reccursivly add children
         for family in self.zcore.get_families_for(indi):
@@ -513,19 +507,13 @@ class FamilyListView(MaegenStackableWindow):
                 husb_picture = get_gender_pixbuf(family.husband)                            
                 indi = family.husband                           
                 husb_full_name = str(indi)
-                if indi.birthDate:
-                    husb_year_birth_death += str(indi.birthDate.year)        
-                if indi.deathDate:
-                    husb_year_birth_death += "-" + str(indi.deathDate.year)
+                husb_year_birth_death = get_life_date_str(indi)
                
             if family.wife :
                 wife_picture = get_gender_pixbuf(family.wife)
                 indi = family.wife        
                 wife_full_name = str(indi)                   
-                if indi.birthDate:
-                    wife_year_birth_death += str(indi.birthDate.year)        
-                if indi.deathDate:
-                    wife_year_birth_death += "-" + str(indi.deathDate.year)
+                wife_year_birth_death = get_life_date_str(indi)
                  
                   
             self.model.append([husb_picture, husb_full_name, husb_year_birth_death, wife_picture, wife_full_name, wife_year_birth_death, family])   
@@ -663,11 +651,7 @@ class NameListView(MaegenStackableWindow):
                   
             root = self.model.append(None, [upper_name, len(indi_list), period, None])
             for indi in indi_list:
-                life_period = ""
-                if indi.birthDate:
-                    life_period += str(indi.birthDate.year)
-                if indi.deathDate:
-                    life_period += "-" + str(indi.deathDate.year)
+                life_period = get_life_date_str(indi)
                 self.model.append(root, [str(indi),None, life_period, indi] )   
         
         self.view = gtk.TreeView(self.model)             
@@ -1000,11 +984,7 @@ class FamilyView(MaegenStackableWindow):
         '''
         
         sex_picture = get_gender_pixbuf(indi)
-        year_birth_death = ""
-        if indi.birthDate:
-            year_birth_death += str(indi.birthDate.year)
-        if indi.deathDate:
-            year_birth_death += "-" + str(indi.deathDate.year)
+        year_birth_death = get_life_date_str(indi)
         row = [sex_picture, indi.firstname, indi.name.upper(), indi.nickname, year_birth_death, indi]
         return row
 
@@ -1167,12 +1147,7 @@ class FamilyView(MaegenStackableWindow):
         widget = gtk.HBox()
         button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
         # Set labels value
-        datestr = ""
-        if individual.birthDate:
-            datestr += str(individual.birthDate.year)
-        
-        if individual.deathDate:
-            datestr += "-" + str(individual.deathDate.year)
+        datestr = get_life_date_str(individual)
         
         button.set_text(str(individual), datestr)
         # Set image
@@ -1823,12 +1798,7 @@ class IndividualView(MaegenStackableWindow):
         widget = gtk.HBox()
         button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
         # Set labels value
-        datestr = ""
-        if individual.birthDate:
-            datestr += str(individual.birthDate.year)
-        
-        if individual.deathDate:
-            datestr += "-" + str(individual.deathDate.year)
+        datestr = get_life_date_str(individual)
         
         button.set_text(str(individual), datestr)
         # Set image
@@ -1871,12 +1841,7 @@ class IndividualView(MaegenStackableWindow):
         widget = gtk.HBox()
         button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
         # Set labels value
-        datestr = ""
-        if individual.birthDate:
-            datestr += str(individual.birthDate.year)
-        
-        if individual.deathDate:
-            datestr += "-" + str(individual.deathDate.year)
+        datestr = get_life_date_str(individual)
         
         button.set_text(str(individual), datestr)
         # Set image
@@ -1896,12 +1861,7 @@ class IndividualView(MaegenStackableWindow):
         widget = gtk.HBox()
         button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
         # Set labels value
-        datestr = ""
-        if individual.birthDate:
-            datestr += str(individual.birthDate.year)
-        
-        if individual.deathDate:
-            datestr += "-" + str(individual.deathDate.year)
+        datestr = get_life_date_str(individual)
         
         button.set_text(str(individual), datestr)
         # Set image
@@ -2217,9 +2177,25 @@ class GenealogicalTreeView(MaegenStackableWindow):
         '''
         top_left = (x-self.WIDTH_FOR_INDI / 2,y)      
         #self.drawing_area.window.draw_rectangle(self.gc, False, top_left[0], top_left[1], self.WIDTH_FOR_INDI, self.HEIGHT_FOR_INDI)
-        self.pangolayout.set_text(str(indi))
-        self.drawing_area.window.draw_layout(self.gc, top_left[0] + 1 , top_left[1] + 1, self.pangolayout)
-
+        # Name
+        self.pangolayout_name.set_text(str(indi))
+        self.drawing_area.window.draw_layout(self.gc, top_left[0] + 1  , top_left[1] + 1 , self.pangolayout_name)        
+        # gender picture if available
+        pixbuf = get_gender_pixbuf(indi)
+        if pixbuf :
+            pixbuf.render_to_drawable(self.drawing_area.window, self.gc, 0,0,top_left[0],top_left[1] + 1 + self.HEIGHT_FOR_INDI / 2,-1,-1)    
+            IMAGE_WIDTH = 13
+            IMAGE_HEIGTH = 13
+                                
+        # date life
+        life_str = get_life_date_str(indi)
+        self.pangolayout_life.set_text(life_str)
+        attrs = pango.AttrList()
+        attrs.insert(pango.AttrScale(pango.SCALE_X_SMALL,0,len(life_str)))
+        self.pangolayout_life.set_attributes(attrs)
+        self.drawing_area.window.draw_layout(self.gc, x , top_left[1] + 1 + self.HEIGHT_FOR_INDI / 2 , self.pangolayout_life)
+        
+        
 
     def init_center_view(self, centerview):
         self.drawing_area = gtk.DrawingArea()
@@ -2228,7 +2204,8 @@ class GenealogicalTreeView(MaegenStackableWindow):
         self.real_height = self.compute_height() 
         self.drawing_area_height = max([400,self.real_height])          
         self.drawing_area.set_size_request(self.drawing_area_width + 1, self.drawing_area_height + 1)  
-        self.pangolayout = self.drawing_area.create_pango_layout("")
+        self.pangolayout_name = self.drawing_area.create_pango_layout("")
+        self.pangolayout_life = self.drawing_area.create_pango_layout("")
         self.drawing_area.connect("expose-event", self.area_expose_cb)        
         centerview.add(self.drawing_area)
 
@@ -2237,8 +2214,6 @@ class GenealogicalTreeView(MaegenStackableWindow):
             #self.drawing_area.window.draw_rectangle(self.gc, False,self.drawing_area_width / 2  - self.real_width/2, 0, self.real_width, self.real_height )
             self.draw_tree(self.root, 0, self.drawing_area_width, 0)
             
-    def size_for_children_row(self, n):
-        return n * self.WIDTH_FOR_INDI + (n-1) * self.HORIZONTAL_SPACE    
     
     def size_for_individual(self, indi):
         '''
