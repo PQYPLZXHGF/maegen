@@ -2260,6 +2260,7 @@ class GenealogicalTreeView(MaegenStackableWindow):
                 self.drawing_area.window.draw_line(self.gc, x,top_y_for_child,x, y_for_horiz_row)         
                 if row_left_x is None:
                     row_left_x = x
+                    row_right_x = x
                 else:
                     row_right_x = x
                 child_left_corner_x += size_for_child + self.HORIZONTAL_SPACE
