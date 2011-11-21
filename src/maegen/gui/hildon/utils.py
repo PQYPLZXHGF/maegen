@@ -29,6 +29,7 @@ Created on Nov 16, 2011
 '''
 
 import hildon
+import dbus
 import gtk
 import webbrowser
 import sys, traceback
@@ -73,6 +74,11 @@ def show_about_dialog(widget, data):
        '''
        call_handled_method(_show_about_dialog)
 
+
+def open_browser_on( url):
+        bus = dbus.SystemBus()
+        browser = dbus.Interface(bus.get_object('com.nokia.osso_browser', '/com/nokia/osso_browser/request'), 'com.nokia.osso_browser')
+        browser.load_url(url)
 
 def _default_exception_handler(gtk_sync = False):
         '''
@@ -181,6 +187,7 @@ class AboutView(MaegenStackableWindow):
     This view show a fancy about dialog
     '''
 
+
     def init_center_view(self, centerview):
         
         pixbuf = gtk.gdk.pixbuf_new_from_file("maegen-logo.jpg")
@@ -257,14 +264,14 @@ Public License along with this program. If not, see
         dialog.run()
         dialog.destroy()
 
-    def on_blog_clicked_event(self, widget, data):
-         webbrowser.open_new_tab("http://blog.maegen.bressure.net");
+    def on_blog_clicked_event(self, widget, data):                                
+        call_handled_method(open_browser_on,"http://blog.maegen.bressure.net")
     
     def on_site_clicked_event(self, widget, data):
-         webbrowser.open_new_tab("http://maegen.bressure.net");
+        call_handled_method(open_browser_on,"http://maegen.bressure.net")
          
     def on_group_clicked_event(self, widget, data):
-         webbrowser.open_new_tab("http://group.maegen.bressure.net");
+        call_handled_method(open_browser_on,"http://group.maegen.bressure.net")
 
 
 class BugReportView(MaegenStackableWindow):
