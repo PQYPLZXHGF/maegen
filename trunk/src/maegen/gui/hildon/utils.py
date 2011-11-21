@@ -26,11 +26,28 @@
 Created on Nov 16, 2011
 
 @author: maemo
+
+def _show_about_dialog():
+    window = AboutView()
+    program = hildon.Program.get_instance()
+    program.add_window(window)
+    window.show_all()
+
 '''
 
 import hildon
 import gtk
 import webbrowser
+import sys, traceback
+import logging
+
+import gdata.projecthosting.client
+import gdata.projecthosting.data
+import gdata.gauth
+import gdata.client
+import gdata.data
+import atom.http_core
+import atom.core
 
 from maegen.common import version
 
@@ -54,10 +71,7 @@ def show_about_dialog(widget, data):
        '''
        Show an information dialog about the program
        '''
-       window = AboutView()
-       program = hildon.Program.get_instance()     
-       program.add_window(window)
-       window.show_all()
+       call_handled_method(show_about_dialog)
 
 
 def _default_exception_handler(gtk_sync = False):
@@ -66,30 +80,30 @@ def _default_exception_handler(gtk_sync = False):
         Currently simply display a banner message.
         '''
         type, value,tb = sys.exc_info()             
-        self.__default_exception_handler(type, value, tb, gtk_sync = gtk_sync)
+        __default_exception_handler(type, value, tb, gtk_sync = gtk_sync)
                         
 def __default_exception_handler(type, value, tb, gtk_sync = False):
         logging.exception("!!! UNHANDLED EXCEPTION !!!")
         if gtk_sync :
             gtk.gdk.threads_enter()
-        self.show_banner_information("An exception occured, please report the bug")
-        window = BugReportView(type, value, tb, self.submit_issue)
-        self.init_menu(window)
-        self.program.add_window(window)
+        show_banner_information("An exception occured, please report the bug")
+        window = BugReportView(type, value, tb)
+        program = hildon.Program.get_instance() 
+        program.add_window(window)
         window.show_all()
         if gtk_sync : 
             gtk.gdk.threads_leave()
 
        
-def call_handled_method(method, *arg):
+def call_handled_method(method, *arg, **kwarg):
        '''
        This utility function catch error on a gentle way
        ''' 
        try:
-            method(*arg)
+            method(*arg, **kwarg)
        except :
             # this is an unkown exception
-            self._default_exception_handler()
+            _default_exception_handler()
 
 
 class MaegenStackableWindow(hildon.StackableWindow):
@@ -251,4 +265,89 @@ Public License along with this program. If not, see
          
     def on_group_clicked_event(self, widget, data):
          webbrowser.open_new_tab("http://group.maegen.bressure.net");
+
+
+class BugReportView(MaegenStackableWindow):
+    '''
+    This view show the bug and give the user the opportunity to report it
+    '''
+    type = None
+    value = None
+    traceback = None
+    
+    submit_issue_callback = None
+    
+    _body = None
+    _subject = None
+    
+    def __init__(self, type, value, traceback):
+        self.type = type
+        self.value = value
+        self.traceback = traceback       
+        MaegenStackableWindow.__init__(self, title="Bug reporting") 
+
+    def init_center_view(self, centerview):
+       
+        subjectLbl = gtk.Label("Subject")
+        centerview.pack_start(self.justifyLeft(subjectLbl), False)
+        self._subject = hildon.Entry(gtk.HILDON_SIZE_FULLSCREEN_WIDTH)
+        self._subject.set_placeholder("enter a subject")
+        self._subject.set_text(str(self.type) + " : " + str(self.value))
+        centerview.pack_start(self._subject, False)
+        contentLbl = gtk.Label("Content")
+        centerview.pack_start(self.justifyLeft(contentLbl), False)
+        self._body = hildon.TextView()
+        self._body.set_placeholder("enter the message here")
+        self._body.set_wrap_mode(gtk.WRAP_WORD)
+        stacktrace = traceback.format_exception(self.type, self.value, self.traceback)
+        buf = self._body.get_buffer()
+        for line in stacktrace:
+            end = buf.get_end_iter()
+            buf.insert(end, line, len(line))
+        centerview.add(self._body)
+        return MaegenStackableWindow.init_center_view(self, centerview)
+
+
+    def init_bottom_button(self, bottomButtons):
+        post = self.create_button("Post issue", None)
+        post.connect("clicked", self.on_post_button_clicked, self)
+        self.add_button(post)                     
+        return MaegenStackableWindow.init_bottom_button(self, bottomButtons)
+
+    def on_post_button_clicked(self, widget, view):
+        buffer = view._body.get_buffer()
+        body = buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter())
+        subject =  view._subject.get_text()
+        self._submit_issue(subject, body)
+
+
+    def _submit_issue(self, title, description):
+        # check credential
+        try:
+            parent = hildon.WindowStack.get_default().peek()
+            dialog = hildon.LoginDialog(parent)
+            dialog.set_message("Gmail account required")            
+            response = dialog.run()
+            username = dialog.get_username()
+            password = dialog.get_password()
+            dialog.destroy()
+            if response == gtk.RESPONSE_OK:
+                try:
+                    issues_client = gdata.projecthosting.client.ProjectHostingClient()
+                    issues_client.client_login(username, password,"maegen", "code")
+                    versionInstance = version.getInstance()
+                    versionStr = versionInstance.getVersion()
+                    revisionStr = versionInstance.getRevision()
+                    labels = ['Type-Defect', 'Priority-High', 'Version-' + versionStr, 'Revision-' + revisionStr]
+                    issues_client.add_issue("maegen", title, description, "tbressure", labels=labels)
+                except:                    
+                    show_banner_information("failed to send issue")
+                    logging.exception("Failed to report the previous issue due to")
+                else:
+                    show_banner_information("issue sent")
+            else:
+                show_banner_information("bug report cancelled")
+        finally:
+            hildon.WindowStack.get_default().pop_1()
+
 
