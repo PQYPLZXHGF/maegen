@@ -32,7 +32,7 @@ import gtk
 
 from maegen.common import version
 
-version.getInstance().submitRevision("$Revision: 155 $")
+version.getInstance().submitRevision("$Revision$")
 
 def get_gender_image(individual):
     '''
