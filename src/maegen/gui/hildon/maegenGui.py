@@ -31,7 +31,6 @@ import gtk
 import hildon
 import gobject
 import logging
-import sys, traceback
 import os.path
 import webbrowser
 import logging
@@ -41,13 +40,7 @@ import datetime
 from Queue import *
 import pango
 
-#import gdata.projecthosting.client
-#import gdata.projecthosting.data
-#import gdata.gauth
-#import gdata.client
-#import gdata.data
-#import atom.http_core
-#import atom.core
+
 
 
 import mock
@@ -81,6 +74,42 @@ class MaegenGui(object):
         else:
            self.zcore = maegen.Maegen()           
         self.init_main_view()   
+
+    def _show_open_dialog(self, widget, data):
+        parent = hildon.WindowStack.get_default().peek()
+        fc = gobject.new(hildon.FileChooserDialog, title="Choose a database", action=gtk.FILE_CHOOSER_ACTION_OPEN)
+        fc.set_property('show-files', True)
+        self._set_default_folder_if_needed()
+        fc.set_current_folder(self._last_folder)
+        if fc.run() == gtk.RESPONSE_OK:
+            filepath = fc.get_filename()
+            self._last_folder = fc.get_current_folder()
+            fc.destroy()
+            self.zcore.load_database(filepath)
+            window = DefaultView(self.zcore, filepath)
+            self.program.add_window(window)
+            window.show_all()
+        else:
+            fc.destroy()
+
+
+    def _show_new_dialog(self, widget, data):
+        parent = hildon.WindowStack.get_default().peek()        
+        fc = gobject.new(hildon.FileChooserDialog, title="New database", action=gtk.FILE_CHOOSER_ACTION_SAVE)
+        fc.set_property('show-files', True)
+        fc.set_do_overwrite_confirmation(True)
+        self._set_default_folder_if_needed()
+        fc.set_current_folder(self._last_folder)
+        if fc.run() == gtk.RESPONSE_OK:
+            filepath = fc.get_filename()
+            self._last_folder = fc.get_current_folder()
+            self.zcore.create_new_database(filepath)
+            window = DefaultView(self.zcore, filepath)
+            self.program.add_window(window)
+            window.show_all()
+        
+        fc.destroy()
+
 
     def _set_default_folder_if_needed(self):
         if not self._last_folder:
@@ -137,87 +166,21 @@ class MaegenGui(object):
         menu.show_all()
         window.set_app_menu(menu)  
         
-
-        
-    
-
-        
-
-    
-   
-    
-
-
-       
+      
     def show_new_dialog(self, widget, data):
        '''
        Show dialog for new genealogical database
        '''
-       parent = hildon.WindowStack.get_default().peek()
-       fc = gobject.new(hildon.FileChooserDialog, title="New database", action=gtk.FILE_CHOOSER_ACTION_SAVE)
-       fc.set_property('show-files',True)    
-       fc.set_do_overwrite_confirmation(True)
-       self._set_default_folder_if_needed()                   
-       fc.set_current_folder(self._last_folder)
-       if fc.run()==gtk.RESPONSE_OK: 
-            filepath = fc.get_filename()    
-            self._last_folder = fc.get_current_folder()              
-            self.zcore.create_new_database(filepath)            
-            window = DefaultView(self.zcore, filepath)        
-            self.program.add_window(window)
-            window.show_all()                     
-       fc.destroy()
+       call_handled_method(self._show_new_dialog, widget, data)
 
        
     def show_open_dialog(self, widget, data):
        '''
        Show dialog to select and open en existing genealogical database
        '''
-       parent = hildon.WindowStack.get_default().peek()
-       fc = gobject.new(hildon.FileChooserDialog, title="Choose a database", action=gtk.FILE_CHOOSER_ACTION_OPEN)
-       fc.set_property('show-files',True)
-       self._set_default_folder_if_needed()                   
-       fc.set_current_folder(self._last_folder)
-       if fc.run()==gtk.RESPONSE_OK: 
-            filepath = fc.get_filename()
-            self._last_folder = fc.get_current_folder()            
-            fc.destroy()   
-            self.zcore.load_database(filepath)                         
-            window = DefaultView(self.zcore, filepath)        
-            self.program.add_window(window)
-            window.show_all()     
-       else:                 
-           fc.destroy()
+       call_handled_method(self._show_open_dialog,widget, data)
               
-    def submit_issue(self, title, description):
-        # check credential
-        try:
-            parent = hildon.WindowStack.get_default().peek()
-            dialog = hildon.LoginDialog(parent)
-            dialog.set_message("Gmail account required")            
-            response = dialog.run()
-            username = dialog.get_username()
-            password = dialog.get_password()
-            dialog.destroy()
-            if response == gtk.RESPONSE_OK:
-                try:
-                    issues_client = gdata.projecthosting.client.ProjectHostingClient()
-                    issues_client.client_login(username, password,"maegen", "code")
-                    versionInstance = version.getInstance()
-                    versionStr = versionInstance.getVersion()
-                    revisionStr = versionInstance.getRevision()
-                    labels = ['Type-Defect', 'Priority-High', 'Version-' + versionStr, 'Revision-' + revisionStr]
-                    issues_client.add_issue("maegen", title, description, "tbressure", labels=labels)
-                except:                    
-                    self.show_banner_information("failed to send issue")
-                    logging.exception("Failed to report the previous issue due to")
-                else:
-                    self.show_banner_information("issue sent")
-            else:
-                self.show_banner_information("bug report cancelled")
-        finally:
-            hildon.WindowStack.get_default().pop_1()
-
+ 
     
     def run(self):
         # the splash screen  is displayed,now show the home screen in a fancy tansition               
@@ -248,6 +211,16 @@ class IndividualListView(MaegenStackableWindow):
         
         menu.show_all()
         self.set_app_menu(menu)
+
+    def _on_row_activated(self, treeview, path, user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi,  = store.get(iter, user_data)
+        hildon.WindowStack.get_default().pop_1()
+        window = IndividualView(self.zcore, indi, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+
 
 
 
@@ -318,7 +291,7 @@ class IndividualListView(MaegenStackableWindow):
         self.view.append_column(column)
                 
 
-        self.view.connect("row-activated", self._on_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
+        self.view.connect("row-activated", self.on_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
         
 
         
@@ -326,14 +299,8 @@ class IndividualListView(MaegenStackableWindow):
         centerview.add(self.view)
         
 
-    def _on_row_activated(self,  treeview, path, view_column,  user_data):
-        store = treeview.get_model()
-        iter = store.get_iter(path)
-        indi, = store.get(iter,user_data)                 
-        hildon.WindowStack.get_default().pop_1()     
-        window = IndividualView(self.zcore, indi, self.database_filename, False)
-        self.program.add_window(window)
-        window.show_all()
+    def on_row_activated(self,  treeview, path, view_column,  user_data):
+        call_handled_method(self._on_row_activated,treeview, path, user_data)
 
 
 class BranchListView(MaegenStackableWindow):
@@ -358,6 +325,16 @@ class BranchListView(MaegenStackableWindow):
         
         menu.show_all()
         self.set_app_menu(menu)
+
+    def _on_row_activated(self, treeview, path, user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi,  = store.get(iter, user_data)
+        hildon.WindowStack.get_default().pop_1()
+        window = IndividualView(self.zcore, indi, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+
 
     def init_center_view(self, centerview):
         LEVEL_COLUMN_INDEX = 0
@@ -433,7 +410,7 @@ class BranchListView(MaegenStackableWindow):
         self.view.append_column(column)
                 
 
-        self.view.connect("row-activated", self._on_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
+        self.view.connect("row-activated", self.on_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
         
 
         
@@ -441,14 +418,8 @@ class BranchListView(MaegenStackableWindow):
         centerview.add(self.view)
         
 
-    def _on_row_activated(self,  treeview, path, view_column,  user_data):
-        store = treeview.get_model()
-        iter = store.get_iter(path)
-        indi, = store.get(iter,user_data)                 
-        hildon.WindowStack.get_default().pop_1()     
-        window = IndividualView(self.zcore, indi, self.database_filename, False)
-        self.program.add_window(window)
-        window.show_all()
+    def on_row_activated(self,  treeview, path, view_column,  user_data):
+        call_handled_method(self._on_row_activated,treeview, path, user_data)
 
     def _add_indivdual_in_tree(self, parent, indi, level=1):
         sex_picture = get_gender_pixbuf(indi)
@@ -484,6 +455,16 @@ class FamilyListView(MaegenStackableWindow):
         
         menu.show_all()
         self.set_app_menu(menu)
+
+    def _on_row_activated(self, treeview, path, user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        family,  = store.get(iter, user_data)
+        # check if the activation come from a nice icon
+        window = FamilyView(self.zcore, family, self.database_filename, False)
+        self.program.add_window(window)
+        window.show_all()
+
 
     def init_center_view(self, centerview):
         HUSB_SEX_PICTURE_COLUMN_INDEX = 0
@@ -572,7 +553,7 @@ class FamilyListView(MaegenStackableWindow):
 
                 
 
-        self.view.connect("row-activated", self._on_row_activated, FAMILY_OBJECT_COLUMN_INDEX)
+        self.view.connect("row-activated", self.on_row_activated, FAMILY_OBJECT_COLUMN_INDEX)
         
 
         
@@ -580,14 +561,8 @@ class FamilyListView(MaegenStackableWindow):
         centerview.add(self.view)
         
 
-    def _on_row_activated(self,  treeview, path, view_column,  user_data):
-        store = treeview.get_model()
-        iter = store.get_iter(path)
-        family, = store.get(iter,user_data)
-        # check if the activation come from a nice icon        
-        window = FamilyView(self.zcore, family, self.database_filename, False)
-        self.program.add_window(window)
-        window.show_all()
+    def on_row_activated(self,  treeview, path, view_column,  user_data):
+        call_handled_method(self._on_row_activated,treeview, path, user_data)
 
 
 
@@ -613,6 +588,16 @@ class NameListView(MaegenStackableWindow):
         
         menu.show_all()
         self.set_app_menu(menu)
+
+    def _on_row_activated(self, treeview, path, user_data):
+        store = treeview.get_model()
+        iter = store.get_iter(path)
+        indi,  = store.get(iter, user_data)
+        if indi:
+            window = IndividualView(self.zcore, indi, self.database_filename, False)
+            self.program.add_window(window)
+            window.show_all()
+
 
     def init_center_view(self, centerview):
         NAME_COLUMN_INDEX = 0
@@ -680,7 +665,7 @@ class NameListView(MaegenStackableWindow):
 
 
 
-        self.view.connect("row-activated", self._on_row_activated, INDIVIDUAL_COLUMN_INDEX)
+        self.view.connect("row-activated", self.on_row_activated, INDIVIDUAL_COLUMN_INDEX)
         
 
         
@@ -688,14 +673,8 @@ class NameListView(MaegenStackableWindow):
         centerview.add(self.view)
         
 
-    def _on_row_activated(self,  treeview, path, view_column,  user_data):   
-        store = treeview.get_model()
-        iter = store.get_iter(path)
-        indi, = store.get(iter,user_data)
-        if indi:                
-            window = IndividualView(self.zcore, indi, self.database_filename, False)
-            self.program.add_window(window)
-            window.show_all()
+    def on_row_activated(self,  treeview, path, view_column,  user_data):   
+        call_handled_method(self._on_row_activated,treeview, path, user_data)
 
       
       
@@ -739,6 +718,141 @@ class DefaultView(MaegenStackableWindow):
         # local variable
         self.selected_individual = None
 
+    def _on_add_family_clicked_event(self, widget, data):
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("New Family")
+        dialog.add_button("Create", gtk.RESPONSE_OK)
+        selector = hildon.TouchSelector()
+        husband_model = gtk.ListStore(str, object)
+        wife_model = gtk.ListStore(str, object)
+        logging.debug("creating list for husband selection...")
+        for indi in self.zcore.retrieve_all_individuals():
+            if indi.gender in ["male", None]:
+                husband_model.append([str(indi), indi])
+            elif indi.gender in ["female", None]:
+                wife_model.append([str(indi), indi])
+            else:
+                logging.warning("unexpected gender for " + str(parent))
+                husband_model.append([str(indi), indi])
+                wife_model.append([str(indi), indi])
+        selector.append_column(husband_model, gtk.CellRendererText(), text=0)
+        selector.append_column(wife_model, gtk.CellRendererText(), text=0)
+        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        dialog.vbox.pack_start(hildon.Caption(None, "Spouses", selector), expand=True)
+        dialog.show_all()
+        resu = dialog.run()
+        if resu == gtk.RESPONSE_OK:
+            model, iter = selector.get_selected(0)
+            husband = model.get(iter, 1)[0]
+            model, iter = selector.get_selected(1)
+            wife = model.get(iter, 1)[0]
+            dialog.destroy()
+            self.zcore.create_new_family(husband, wife)
+            self.zcore.save_database(self.database_filename)
+            self.refresh()
+        else:
+            dialog.destroy()
+
+
+    def _on_individual_clicked_event(self, widget, data):
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("New individual")
+        dialog.add_button("Create", gtk.RESPONSE_OK)
+        firstname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        name = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        nickname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        dialog.vbox.add(hildon.Caption(None, "Firstname", firstname))
+        dialog.vbox.add(hildon.Caption(None, "Name", name))
+        dialog.vbox.add(hildon.Caption(None, "Nickname", nickname))
+        dialog.show_all()
+        resu = dialog.run()
+        if resu == gtk.RESPONSE_OK:
+            new_indi = self.zcore.create_new_individual(name.get_text(), firstname.get_text())
+            self.zcore.save_database(self.database_filename)
+            self.refresh()
+            new_indi.nickname = nickname.get_text()
+            dialog.destroy()
+            window = IndividualView(self.zcore, new_indi, self.database_filename, edit_mode=self.zcore.settings.edit_new_individual)
+            self.program.add_window(window)
+            window.show_all()
+        else:
+            dialog.destroy()
+
+
+    def _on_btn_name_clicked_event(self, widget, data):
+        window = NameListView(self.zcore, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_btn_branch_clicked_event(self, widget, data):
+        window = BranchListView(self.zcore, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_btn_family_clicked_event(self, widget, data):
+        window = FamilyListView(self.zcore, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_btn_individual_clicked_event(self, widget, data):
+        window = IndividualListView(self.zcore, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_search_menu_clicked(self, widget, data):
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("Search")
+        dialog.add_button("Search", gtk.RESPONSE_OK)
+        entry = hildon.Entry(gtk.HILDON_SIZE_AUTO)
+        dialog.vbox.add(entry)
+        dialog.show_all()
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            dialog.destroy()
+            not_yet_implemented()
+        else:
+            dialog.destroy()
+
+
+    def _on_export_menu_clicked(self, widget, data):
+        dialog = gtk.Dialog()
+        dialog.set_transient_for(self)
+        dialog.set_title("Gedcom for database")
+        dialog.add_button("Save...", -1000)
+        gedcom = hildon.TextView()
+        gedcom_source = self.zcore.export_to_gedcom()
+        buffer = gtk.TextBuffer()
+        buffer.set_text(gedcom_source)
+        gedcom.set_buffer(buffer)
+        gedcom.set_property('editable', False)
+        pannable_area = hildon.PannableArea()
+        pannable_area.set_property('mov_mode', hildon.MOVEMENT_MODE_BOTH)
+        pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
+        pannable_area.add_with_viewport(gedcom)
+        dialog.vbox.add(pannable_area)
+        dialog.show_all()
+        response = dialog.run()
+        if response == -1000:
+            dialog.destroy()
+            fc = gobject.new(hildon.FileChooserDialog, title="Enter gedcom file", action=gtk.FILE_CHOOSER_ACTION_SAVE)
+            fc.set_property('show-files', True)
+            fc.set_do_overwrite_confirmation(True)
+            if fc.run() == gtk.RESPONSE_OK:
+                filepath = fc.get_filename()
+                self.zcore.export_to_gedcom(filepath + ".ged")
+            
+            fc.destroy()
+        
+        dialog.destroy()
+
+
 
 
     def refresh(self):
@@ -749,82 +863,30 @@ class DefaultView(MaegenStackableWindow):
 
 
     def on_export_menu_clicked(self, widget, data):
-        dialog = gtk.Dialog()
-        dialog.set_transient_for(self)
-        dialog.set_title("Gedcom for database") 
-        dialog.add_button("Save...", -1000)            
-        gedcom = hildon.TextView()
-        gedcom_source = self.zcore.export_to_gedcom()
-        buffer = gtk.TextBuffer()
-        buffer.set_text(gedcom_source)        
-        gedcom.set_buffer(buffer)
-        gedcom.set_property('editable', False)
-        
-        pannable_area = hildon.PannableArea()
-        pannable_area.set_property('mov_mode',hildon.MOVEMENT_MODE_BOTH)
-        pannable_area.set_property('size-request-policy', hildon.SIZE_REQUEST_CHILDREN)
-        pannable_area.add_with_viewport(gedcom)
-        dialog.vbox.add(pannable_area)
-        dialog.show_all()
-        response = dialog.run()
-        if response == -1000:
-            dialog.destroy()
-            fc = gobject.new(hildon.FileChooserDialog, title="Enter gedcom file", action=gtk.FILE_CHOOSER_ACTION_SAVE)
-            fc.set_property('show-files',True)    
-            fc.set_do_overwrite_confirmation(True)                                        
-            if fc.run()==gtk.RESPONSE_OK: 
-                filepath = fc.get_filename()                                
-                self.zcore.export_to_gedcom(filepath + ".ged")            
-            fc.destroy()
+        call_handled_method(self._on_export_menu_clicked, widget, data)
 
-        dialog.destroy()
-
-   
-
-
-           
         
     def on_search_menu_clicked(self, widget, data):
-        dialog = gtk.Dialog()
-        dialog.set_transient_for(self)
-        dialog.set_title("Search") 
-        dialog.add_button("Search", gtk.RESPONSE_OK) 
-        entry = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-        dialog.vbox.add(entry) 
-        dialog.show_all()
-        response = dialog.run()        
-        if response == gtk.RESPONSE_OK:            
-            dialog.destroy()    
-            not_yet_implemented()
-        else:
-            dialog.destroy()        
+        call_handled_method(self._on_search_menu_clicked,widget, data)        
 
 
-    def _on_btn_individual_clicked_event(self, widget, data):
-         window = IndividualListView(self.zcore, self.database_filename)
-         self.program.add_window(window)
-         window.show_all()
+    def on_btn_individual_clicked_event(self, widget, data):
+         call_handled_method(self._on_btn_individual_clicked_event,widget, data)
          
-    def _on_btn_family_clicked_event(self, widget, data):
-         window = FamilyListView(self.zcore, self.database_filename)
-         self.program.add_window(window)
-         window.show_all()
+    def on_btn_family_clicked_event(self, widget, data):
+         call_handled_method(self._on_btn_family_clicked_event, widget, data)
 
-    def _on_btn_branch_clicked_event(self, widget, data):
-        window = BranchListView(self.zcore, self.database_filename)
-        self.program.add_window(window)
-        window.show_all()
+    def on_btn_branch_clicked_event(self, widget, data):
+        call_handled_method(self._on_btn_branch_clicked_event, widget, data)
 
-    def _on_btn_name_clicked_event(self, widget, data):
-         window = NameListView(self.zcore, self.database_filename)
-         self.program.add_window(window)
-         window.show_all()
+    def on_btn_name_clicked_event(self, widget, data):
+         call_handled_method(self._on_btn_name_clicked_event, widget, data)
 
     def init_center_view(self, centerview):
        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
        button.set_title("Individual")
        button.set_value(str(self.zcore.individuals_count()))
-       button.connect("clicked", self._on_btn_individual_clicked_event, None)
+       button.connect("clicked", self.on_btn_individual_clicked_event, None)
        centerview.pack_start(button, expand=False)
        
        self.individual_count_label = button
@@ -832,7 +894,7 @@ class DefaultView(MaegenStackableWindow):
        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
        button.set_title("Family")
        button.set_value(str(self.zcore.families_count()))
-       button.connect("clicked", self._on_btn_family_clicked_event, None)
+       button.connect("clicked", self.on_btn_family_clicked_event, None)
        centerview.pack_start(button, expand=False)
        
        self.family_count_label= button
@@ -840,7 +902,7 @@ class DefaultView(MaegenStackableWindow):
        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
        button.set_title("Branch")
        button.set_value(str(self.zcore.branches_count()))        
-       button.connect("clicked", self._on_btn_branch_clicked_event, None)       
+       button.connect("clicked", self.on_btn_branch_clicked_event, None)       
        centerview.pack_start(button, expand=False)
 
        self.branche_count_label = button
@@ -848,7 +910,7 @@ class DefaultView(MaegenStackableWindow):
        button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_HORIZONTAL)
        button.set_title("Name")
        button.set_value(str(self.zcore.names_count()))            
-       button.connect("clicked", self._on_btn_name_clicked_event, None)       
+       button.connect("clicked", self.on_btn_name_clicked_event, None)       
        centerview.pack_start(button, expand=False)
 
        self.name_count_label = button
@@ -863,70 +925,11 @@ class DefaultView(MaegenStackableWindow):
         self.add_button(add_fami_btn)
         
     def on_add_individual_clicked_event(self, widget, data):
-        dialog = gtk.Dialog()
-        dialog.set_transient_for(self)
-        dialog.set_title("New individual")
-        
-        dialog.add_button("Create", gtk.RESPONSE_OK)
-        firstname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-        name = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-        nickname = hildon.Entry(gtk.HILDON_SIZE_AUTO)
-        dialog.vbox.add(hildon.Caption(None,"Firstname",firstname))
-        dialog.vbox.add(hildon.Caption(None,"Name",name))
-        dialog.vbox.add(hildon.Caption(None,"Nickname",nickname))
-        dialog.show_all()
-        resu = dialog.run()
-        if resu == gtk.RESPONSE_OK:            
-            new_indi = self.zcore.create_new_individual(name.get_text(), firstname.get_text())
-            self.zcore.save_database(self.database_filename)
-            self.refresh()
-            new_indi.nickname = nickname.get_text()
-            dialog.destroy()
-            window = IndividualView(self.zcore,new_indi, self.database_filename,edit_mode=self.zcore.settings.edit_new_individual)
-            self.program.add_window(window)
-            window.show_all()
-        else:
-            dialog.destroy()
+        call_handled_method(self._on_individual_clicked_event,widget, data)
         
     
     def on_add_family_clicked_event(self, widget, data):
-        dialog = gtk.Dialog()
-        dialog.set_transient_for(self)
-        dialog.set_title("New Family")
-        
-        dialog.add_button("Create", gtk.RESPONSE_OK)
-       
-        selector = hildon.TouchSelector()        
-        husband_model = gtk.ListStore(str, object)
-        wife_model = gtk.ListStore(str, object)
-        logging.debug("creating list for husband selection...")
-        for indi in self.zcore.retrieve_all_individuals():
-            if indi.gender in ["male", None] :
-                    husband_model.append([str(indi), indi])
-            elif indi.gender in ["female", None] :
-                    wife_model.append([str(indi), indi])
-            else:
-                logging.warning("unexpected gender for " + str(parent))
-                husband_model.append([str(indi), indi])
-                wife_model.append([str(indi), indi])
-                    
-        selector.append_column(husband_model, gtk.CellRendererText(), text=0)
-        selector.append_column(wife_model, gtk.CellRendererText(), text=0)
-        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
-        dialog.vbox.pack_start(hildon.Caption(None, "Spouses" ,selector),expand=True)
-        dialog.show_all()
-        resu = dialog.run()
-        if resu == gtk.RESPONSE_OK:            
-            model, iter = selector.get_selected(0)
-            husband = model.get(iter,1)[0]        
-            model, iter = selector.get_selected(1)
-            wife = model.get(iter,1)[0]        
-            dialog.destroy()
-            self.zcore.create_new_family(husband, wife)
-            self.zcore.save_database(self.database_filename)
-            self.refresh()
-        else:
-            dialog.destroy()
+        call_handled_method(self._on_add_family_clicked_event,widget, data)
 
 
 class FamilyView(MaegenStackableWindow):
@@ -950,18 +953,18 @@ class FamilyView(MaegenStackableWindow):
         if  self.edit_mode:
             add_child_btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             add_child_btn.set_label("Add child");
-            add_child_btn.connect("clicked", self._on_add_child_menu_clicked, None)
+            add_child_btn.connect("clicked", self.on_add_child_menu_clicked, None)
             menu.append(add_child_btn)    
 
             rem_child_btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             rem_child_btn.set_label("Remove Child");
-            rem_child_btn.connect("clicked", self._on_remove_child_menu_clicked, None)
+            rem_child_btn.connect("clicked", self.on_remove_child_menu_clicked, None)
             menu.append(rem_child_btn)    
             
         else:
             editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             editBtn.set_label("Edit");
-            editBtn.connect("clicked", self._on_edit_menu_clicked, None)
+            editBtn.connect("clicked", self_on_edit_menu_clicked, None)
             menu.append(editBtn)    
         
 
@@ -975,6 +978,133 @@ class FamilyView(MaegenStackableWindow):
         
         menu.show_all()
         self.set_app_menu(menu)  
+
+    def _on_child_row_activated(self, treeview, path, user_data):
+        if not self.edit_mode:
+            store = treeview.get_model()
+            iter = store.get_iter(path)
+            indi,  = store.get(iter, user_data)
+            # check if the activation come from a nice icon
+            hildon.WindowStack.get_default().pop_1()
+            window = IndividualView(self.zcore, indi, self.database_filename, False)
+            self.program.add_window(window)
+            window.show_all()
+
+
+    def _on_parent_clicked_event(self, widget, data):
+        if self.edit_mode:
+            # open a dialog an individual or create a new one
+            if data == self.edit_husband:
+                self._open_dialog_to_select_parent(widget, "husband")
+            elif data == self.edit_wife:
+                self._open_dialog_to_select_parent(widget, "wife")
+            elif data == self.family.husband and self.edit_husband is None:
+                self._open_dialog_to_select_parent(widget, "husband")
+            elif data == self.family.wife and self.edit_wife is None:
+                self._open_dialog_to_select_parent(widget, "wife")
+            else:
+                logging.error("unexpected data attribute " + str(data))
+        else:
+            hildon.WindowStack.get_default().pop_1()
+            indi = data
+            window = IndividualView(self.zcore, indi, self.database_filename, False)
+            self.program.add_window(window)
+            window.show_all()
+
+
+    def _on_edit_menu_clicked(self):
+        
+        # remove  the currentview
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = FamilyView(self.zcore, self.family, self.database_filename, True)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_remove_child_menu_clicked(self):
+        store, iter = self.view.get_selection().get_selected()
+        indi,  = store.get(iter, 5)
+        if iter:
+            self.model.remove(iter)
+            show_banner_information(str(indi) + " has been removed")
+        else:
+            show_banner_information("select a child to remove first")
+
+
+    def _on_add_child_menu_clicked(self):
+        selector = hildon.TouchSelector()
+        model = gtk.ListStore(str, object)
+        logging.debug("creating list for child selection...")
+        for indi in filter(lambda child: child.mother is None and child.father is None, self.zcore.retrieve_all_individuals()):
+            model.append([str(indi), indi])
+        
+        selector.append_column(model, gtk.CellRendererText(), text=0)
+        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        dialog = hildon.PickerDialog(self)
+        dialog.set_transient_for(self)
+        dialog.set_title("Select an individual")
+        dialog.set_done_label("add as child")
+        dialog.set_selector(selector)
+        dialog.show_all()
+        self.selected_individual = None
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            model, iter = selector.get_selected(0)
+            indi = model.get(iter, 1)[0]
+            dialog.destroy()
+            self.model.append(self._create_row_for_children_list_model(indi))
+        else:
+            dialog.destroy()
+
+
+    def _on_save_clicked_event(self, widget, data):
+        
+        # change identity of the family
+        
+        # change the marriage status
+        model, iter = self.edit_marriage.get_selector().get_selected(0)
+        marriage = model.get(iter, 0)[0]
+        if marriage == "no mention":
+            param_marriage = False
+        elif marriage == "married":
+            param_marriage = True
+        else:
+            logging.error("unexpexted marriage value from picker [" + str(marriage) + "], value not set")
+            param_marriage = self.family.married
+        model, iter = self.edit_divorce.get_selector().get_selected(0)
+        divorce = model.get(iter, 0)[0]
+        if divorce == "not divorced":
+            param_divorce = False
+        elif divorce == "divorced":
+            param_divorce = True
+        else:
+            logging.error("unexpexted divorce value from picker [" + str(divorce) + "], value not set")
+            param_divorce = self.family.divorced
+        if self.marriagedate_enable.get_active():
+            y, m, d = self.edit_marriage_date.get_date()
+            param_marriage_date = datetime.date(y, m + 1, d)
+        else:
+            param_marriage_date = None
+        param_marriage_place = self.edit_marriage_place.get_text()
+        if self.divorcedate_enable.get_active():
+            y, m, d = self.edit_divorce_date.get_date()
+            param_divorce_date = datetime.date(y, m + 1, d)
+        else:
+            param_divorce_date = None
+        self.zcore.update_marriage_status(self.family, married=param_marriage, marriage_date=param_marriage_date, marriage_place=param_marriage_place, divorced=param_divorce, divorce_date=param_divorce_date)
+        # change children list
+        iter = self.model.get_iter_first()
+        children_list = []
+        while iter:
+            indi,  = self.model.get(iter, 5)
+            children_list.append(indi)
+            iter = self.model.iter_next(iter)
+        self.zcore.update_children_list(self.family, children_list)
+        # after all job done, save the database
+        self.zcore.save_database(self.database_filename)
+        self.pop_and_show_family()
+
 
     def _create_row_for_children_list_model(self, indi):
         '''
@@ -991,63 +1121,10 @@ class FamilyView(MaegenStackableWindow):
 
 
     def on_save_clicked_event(self, widget, data):
-        # change identity of the family
-        
-        # change the marriage status
-        model, iter = self.edit_marriage.get_selector().get_selected(0)
-        marriage =  model.get(iter,0)[0]
-        if marriage == "no mention":
-            param_marriage = False
-        elif marriage == "married":
-            param_marriage = True        
-        else:
-            logging.error("unexpexted marriage value from picker [" + str(marriage) + "], value not set")
-            param_marriage = self.family.married
-        
-
-        model, iter = self.edit_divorce.get_selector().get_selected(0)
-        divorce =  model.get(iter,0)[0]
-        if divorce == "not divorced":
-            param_divorce = False
-        elif divorce == "divorced":
-            param_divorce = True        
-        else:
-            logging.error("unexpexted divorce value from picker [" + str(divorce) + "], value not set")
-            param_divorce = self.family.divorced
-        
-        
-        if self.marriagedate_enable.get_active():
-            y,m,d = self.edit_marriage_date.get_date()
-            param_marriage_date = datetime.date(y,m+1,d) 
-        else:
-            param_marriage_date = None
-            
-        param_marriage_place = self.edit_marriage_place.get_text()
-        
-        if self.divorcedate_enable.get_active():
-            y,m,d = self.edit_divorce_date.get_date()
-            param_divorce_date = datetime.date(y,m+1,d) 
-        else:
-            param_divorce_date = None
-        
-        self.zcore.update_marriage_status(self.family, married=param_marriage, marriage_date=param_marriage_date, marriage_place=param_marriage_place, divorced=param_divorce, divorce_date=param_divorce_date)
-        # change children list
-        iter = self.model.get_iter_first()
-        children_list = []
-        while iter:        
-            indi, = self.model.get(iter,5)
-            children_list.append(indi)
-            iter = self.model.iter_next(iter)
-        
-        self.zcore.update_children_list(self.family, children_list)
-        
-        # after all job done, save the database
-        self.zcore.save_database(self.database_filename)
-        
-        self.pop_and_show_family()        
+        call_handled_method(self._on_save_clicked_event,widget, data)        
         
     def on_cancel_clicked_event(self, widget, data):
-        self.pop_and_show_family()
+        call_handled_method(self.pop_and_show_family)
 
 
     def init_bottom_button(self, bottomButtons):
@@ -1073,75 +1150,21 @@ class FamilyView(MaegenStackableWindow):
         window.show_all()
 
 
-    def _on_add_child_menu_clicked(self, widget, data):
-        selector = hildon.TouchSelector()
-        model = gtk.ListStore(str, object)
-        logging.debug("creating list for child selection...")
-        
-        for indi in filter(lambda child: child.mother is None and child.father is None, self.zcore.retrieve_all_individuals()):
-            model.append([str(indi), indi])
-                    
-        selector.append_column(model, gtk.CellRendererText(), text=0)
-        selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)            
-        
-        dialog = hildon.PickerDialog(self)
-        dialog.set_transient_for(self)
-        dialog.set_title("Select an individual")
-        dialog.set_done_label("add as child")
-        dialog.set_selector(selector)
-        dialog.show_all()
-        self.selected_individual = None
-        response = dialog.run()
-        if response == gtk.RESPONSE_OK:
-            model, iter = selector.get_selected(0)
-            indi = model.get(iter, 1)[0]
-            dialog.destroy()
-            self.model.append(self._create_row_for_children_list_model(indi))
-        else:
-            dialog.destroy()
+    def on_add_child_menu_clicked(self, widget, data):
+        call_handled_method(self._on_add_child_menu_clicked)
         
         
-    def _on_remove_child_menu_clicked(self, widget, data):
-        
-        store, iter  =self.view.get_selection().get_selected() 
-        indi, = store.get(iter,5)
-        if iter:              
-            self.model.remove(iter)
-            show_banner_information(str(indi) + " has been removed")
-        else:
-            show_banner_information("select a child to remove first")
+    def on_remove_child_menu_clicked(self, widget, data):        
+        call_handled_method(self._on_remove_child_menu_clicked)
        
        
 
-    def _on_edit_menu_clicked(self, widget, data):
-        # remove  the currentview
-        hildon.WindowStack.get_default().pop_1()
-        # open the clicked parent
-        window = FamilyView(self.zcore,self.family, self.database_filename, True)
-        self.program.add_window(window)
-        window.show_all()
+    def on_edit_menu_clicked(self, widget, data):
+        call_handled_method(self._on_edit_menu_clicked)
 
 
-    def _on_parent_clicked_event(self, widget, data):
-        if self.edit_mode:
-            # open a dialog an individual or create a new one
-            if data == self.edit_husband:
-                self._open_dialog_to_select_parent(widget, "husband")
-            elif  data == self.edit_wife:                
-                self._open_dialog_to_select_parent(widget, "wife")                
-            elif data == self.family.husband and self.edit_husband is None:                
-                self._open_dialog_to_select_parent(widget, "husband")
-            elif data == self.family.wife and self.edit_wife is None:
-                self._open_dialog_to_select_parent(widget,"wife")
-            else:
-                logging.error("unexpected data attribute " + str(data))
-           
-        else:
-            hildon.WindowStack.get_default().pop_1()
-            indi = data     
-            window = IndividualView(self.zcore, indi, self.database_filename, False)
-            self.program.add_window(window)
-            window.show_all()
+    def on_parent_clicked_event(self, widget, data):
+        call_handled_method(self._on_parent_clicked_event,widget, data)
         
     def _create_parent_widget(self, individual):
         widget = gtk.HBox()
@@ -1158,7 +1181,7 @@ class FamilyView(MaegenStackableWindow):
             button.set_image(image)
             button.set_image_position(gtk.POS_RIGHT)
                                         
-        button.connect("clicked", self._on_parent_clicked_event, individual)
+        button.connect("clicked", self.on_parent_clicked_event, individual)
         widget.pack_start(button)
         if self.edit_mode:        
             if individual == self.family.husband and not self.edit_husband:
@@ -1184,7 +1207,6 @@ class FamilyView(MaegenStackableWindow):
                 widget.pack_start(self.wife_enabled, expand=False)
                
         return widget
-
 
     def _open_dialog_to_select_parent(self, widget, parent):
         selector = hildon.TouchSelector()
@@ -1240,6 +1262,9 @@ class FamilyView(MaegenStackableWindow):
             dialog.destroy()
 
 
+    def open_dialog_to_select_parent(self, widget, parent):
+        call_handled_method(self._open_dialog_to_select_parent,widget, parent)
+
     def _create_spouses_pane(self):
         if self.edit_mode:
             if self.edit_husband:
@@ -1252,7 +1277,7 @@ class FamilyView(MaegenStackableWindow):
                 logging.debug("add a button to set an husband")
                 add_husband_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
                 add_husband_btn.set_title("Add husband")               
-                add_husband_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")
+                add_husband_btn.connect("clicked", self.open_dialog_to_select_parent, "husband")
                 self.spouses_pane.pack_start(add_husband_btn)
         elif self.family.husband:
             self.spouses_pane.pack_start(self._create_parent_widget(self.family.husband))
@@ -1270,7 +1295,7 @@ class FamilyView(MaegenStackableWindow):
                 logging.debug("add a button to set a wife")
                 add_wife_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
                 add_wife_btn.set_title("Add husband")               
-                add_wife_btn.connect("clicked", self._open_dialog_to_select_parent, "husband")
+                add_wife_btn.connect("clicked", self.open_dialog_to_select_parent, "husband")
                 self.spouses_pane.pack_start(add_wife_btn)
         elif self.family.wife:                        
             self.spouses_pane.pack_start(self._create_parent_widget(self.family.wife))
@@ -1435,16 +1460,8 @@ class FamilyView(MaegenStackableWindow):
 
     
     
-    def _on_child_row_activated(self,  treeview, path, view_column,  user_data):
-        if not self.edit_mode:
-            store = treeview.get_model()
-            iter = store.get_iter(path)
-            indi, = store.get(iter,user_data)
-            # check if the activation come from a nice icon        
-            hildon.WindowStack.get_default().pop_1()
-            window = IndividualView(self.zcore, indi, self.database_filename, False)
-            self.program.add_window(window)
-            window.show_all()
+    def on_child_row_activated(self,  treeview, path, view_column,  user_data):
+        call_handled_method(self._on_child_row_activated,treeview, path, user_data)
     
     def create_children_pane(self):
  
@@ -1497,7 +1514,7 @@ class FamilyView(MaegenStackableWindow):
 
                
 
-        self.view.connect("row-activated", self._on_child_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
+        self.view.connect("row-activated", self.on_child_row_activated, INDIVIDUAL_OBJECT_COLUMN_INDEX)
 
         children = gtk.VBox()
         children.add(self.justifyLeft(gtk.Label(str(len(self.family.children)) + " child(ren)")))
@@ -1540,12 +1557,12 @@ class IndividualView(MaegenStackableWindow):
         if not self.edit_mode:
             editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             editBtn.set_label("Edit");
-            editBtn.connect("clicked", self._on_edit_menu_clicked, None)
+            editBtn.connect("clicked", self.on_edit_menu_clicked, None)
             menu.append(editBtn)   
             
             editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             editBtn.set_label("Descendants");
-            editBtn.connect("clicked", self._on_descednants_menu_clicked, None)
+            editBtn.connect("clicked", self.on_descednants_menu_clicked, None)
             menu.append(editBtn)   
             
         
@@ -1561,10 +1578,66 @@ class IndividualView(MaegenStackableWindow):
         menu.show_all()
         self.set_app_menu(menu)  
 
+    def _on_parent_clicked_event(self, widget, data):
+        if self.edit_mode:
+            # open a dialog an individual or create a new one
+            if data == self.edit_father:
+                self._open_dialog_to_select_parent(widget, "father")
+            elif data == self.edit_mother:
+                self._open_dialog_to_select_parent(widget, "mother")
+            elif data == self.individual.father and self.edit_father is None:
+                self._open_dialog_to_select_parent(widget, "father")
+            elif data == self.individual.mother and self.edit_mother is None:
+                self._open_dialog_to_select_parent(widget, "mother")
+            else:
+                logging.error("unexpected data attribute " + str(data))
+        # remove  the currentview
+        else:
+            hildon.WindowStack.get_default().pop_1()
+            # open the clicked parent
+            window = IndividualView(self.zcore, data, self.database_filename)
+            self.program.add_window(window)
+            window.show_all()
+
+
+    def _on_partner_clicked_event(self, data):
+        
+        # remove  the currentview
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = IndividualView(self.zcore, data, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_child_clicked_event(self, data):
+        
+        # remove  the currentview
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = IndividualView(self.zcore, data, self.database_filename)
+        self.program.add_window(window)
+        window.show_all()
+
+
+    def _on_edit_menu_clicked(self, widget, data):
+        
+        # remove  the currentview
+        hildon.WindowStack.get_default().pop_1()
+        # open the clicked parent
+        window = IndividualView(self.zcore, self.individual, self.database_filename, True)
+        self.program.add_window(window)
+        window.show_all()
+
+
     def _on_descednants_menu_clicked(self, widget, data):
         window = GenealogicalTreeView(self.zcore, self.individual)
         self.program.add_window(window)
         window.show_all()
+
+
+    def on_descednants_menu_clicked(self, widget, data):
+        call_handled_method(self._on_descednants_menu_clicked,widget, data)
 
     
     def pop_and_show_individual(self):
@@ -1575,13 +1648,8 @@ class IndividualView(MaegenStackableWindow):
         window.show_all()
 
 
-    def _on_edit_menu_clicked(self, widget, data):
-        # remove  the currentview
-        hildon.WindowStack.get_default().pop_1()
-        # open the clicked parent
-        window = IndividualView(self.zcore,self.individual, self.database_filename, True)
-        self.program.add_window(window)
-        window.show_all()
+    def on_edit_menu_clicked(self, widget, data):
+        call_handled_method(self._on_edit_menu_clicked,widget, data)
 
     def init_bottom_button(self, bottomButtons):
         logging.debug("init_bottom_button for individualView...")
@@ -1596,9 +1664,8 @@ class IndividualView(MaegenStackableWindow):
            self.add_button(cancel_btn)
         else:
             logging.debug("not in edit mode, NO bottom button")
-            
-    def on_save_clicked_event(self, widget, data):
-                            
+ 
+    def _on_save_clicked_event(self, widget, data):
         if self.edit_father and self.edit_mother:
             if self.father_enabled.get_active() and self.mother_enabled.get_active():                            
                 self.zcore.set_parents(self.individual, self.edit_father, self.edit_mother)
@@ -1675,9 +1742,12 @@ class IndividualView(MaegenStackableWindow):
         self.zcore.save_database(self.database_filename)
         
         self.pop_and_show_individual()
+         
+    def on_save_clicked_event(self, widget, data):
+        call_handled_method(self._on_save_clicked_event,widget, data)                    
         
     def on_cancel_clicked_event(self, widget, data):
-        self.pop_and_show_individual()
+        call_handled_method(self.pop_and_show_individual)
 
     def _create_parent_pane(self, individual):
         logging.debug("creating parent pane for " + str(individual))
@@ -1713,14 +1783,14 @@ class IndividualView(MaegenStackableWindow):
                 logging.debug("add a button to set a mother")                
                 add_mother_btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
                 add_mother_btn.set_title("Add mother")                
-                add_mother_btn.connect("clicked", self._open_dialog_to_select_parent, "mother")
+                add_mother_btn.connect("clicked", self.open_dialog_to_select_parent, "mother")
                 self.parent_pane.pack_start(add_mother_btn)
         elif individual.mother:
             self.parent_pane.pack_start(self._create_parent_widget(individual.mother))
         else:
             logging.debug("no widget for mother becaue there is no mother and not in edit mode")
 
-    def _open_dialog_to_select_parent(self, widget, parent):
+    def _open_dialog_to_select_parent(self, widget, data):
         selector = hildon.TouchSelector()
         model = gtk.ListStore(str, object)
         logging.debug("creating list for parent selection...")
@@ -1772,7 +1842,10 @@ class IndividualView(MaegenStackableWindow):
             self.parent_pane.show_all()
         else:
             dialog.destroy()
-
+        
+    
+    def open_dialog_to_select_parent(self, widget, parent):
+        call_handled_method(self._open_dialog_to_select_parent,widget, parent)
 
     def _create_gender_picker(self, individual):
         picker_button = hildon.PickerButton(gtk.HILDON_SIZE_AUTO, hildon.BUTTON_ARRANGEMENT_VERTICAL)
@@ -1808,7 +1881,7 @@ class IndividualView(MaegenStackableWindow):
             button.set_image(image)
             button.set_image_position(gtk.POS_RIGHT)
                                         
-        button.connect("clicked", self._on_parent_clicked_event, individual)
+        button.connect("clicked", self.on_parent_clicked_event, individual)
         widget.pack_start(button)
         if self.edit_mode:
             
@@ -1851,7 +1924,7 @@ class IndividualView(MaegenStackableWindow):
             button.set_image(image)
             button.set_image_position(gtk.POS_RIGHT)
                                         
-        button.connect("clicked", self._on_partner_clicked_event, individual)
+        button.connect("clicked", self.on_partner_clicked_event, individual)
         widget.pack_start(button)
 
                
@@ -1871,53 +1944,23 @@ class IndividualView(MaegenStackableWindow):
             button.set_image(image)
             button.set_image_position(gtk.POS_RIGHT)
                                         
-        button.connect("clicked", self._on_child_clicked_event, individual)
+        button.connect("clicked", self.on_child_clicked_event, individual)
         widget.pack_start(button)
 
                
         return widget
     
         
-    def _on_child_clicked_event(self, widget, data):
-            # remove  the currentview
-            hildon.WindowStack.get_default().pop_1()
-            # open the clicked parent
-            window = IndividualView(self.zcore,data, self.database_filename)
-            self.program.add_window(window)
-            window.show_all()
+    def on_child_clicked_event(self, widget, data):
+            call_handled_method(self._on_child_clicked_event,data)
     
     
-    def _on_partner_clicked_event(self, widget, data):
-            # remove  the currentview
-            hildon.WindowStack.get_default().pop_1()
-            # open the clicked parent
-            window = IndividualView(self.zcore,data, self.database_filename)
-            self.program.add_window(window)
-            window.show_all()
+    def on_partner_clicked_event(self, widget, data):
+            call_handled_method(self._on_partner_clicked_event,data)
     
     
-    def _on_parent_clicked_event(self, widget, data):
-        if self.edit_mode:
-            # open a dialog an individual or create a new one
-            if data == self.edit_father:
-                self._open_dialog_to_select_parent(widget, "father")
-            elif  data == self.edit_mother:                
-                self._open_dialog_to_select_parent(widget, "mother")                
-            elif data == self.individual.father and self.edit_father is None:                
-                self._open_dialog_to_select_parent(widget, "father")
-            elif data == self.individual.mother and self.edit_mother is None:
-                self._open_dialog_to_select_parent(widget,"mother")
-            else:
-                logging.error("unexpected data attribute " + str(data))
-           
-
-        else:
-            # remove  the currentview
-            hildon.WindowStack.get_default().pop_1()
-            # open the clicked parent
-            window = IndividualView(self.zcore,data, self.database_filename)
-            self.program.add_window(window)
-            window.show_all()
+    def on_parent_clicked_event(self, widget, data):
+        call_handled_method(self._on_parent_clicked_event,widget, data)
     
 
     def create_header(self, individual):
@@ -2090,65 +2133,6 @@ class SplashScreenView(MaegenStackableWindow):
 
     def init_center_view(self, centerview):
         fill_widget_with_logo(centerview)
-
-
-
-
-       
-
-class BugReportView(MaegenStackableWindow):
-    '''
-    This view show the bug and give the user the opportunity to report it
-    '''
-    type = None
-    value = None
-    traceback = None
-    
-    submit_issue_callback = None
-    
-    _body = None
-    _subject = None
-    
-    def __init__(self, type, value, traceback, submit_issue_callback):
-        self.type = type
-        self.value = value
-        self.traceback = traceback
-        self.submit_issue_callback = submit_issue_callback
-        MaegenStackableWindow.__init__(self, title="Bug reporting") 
-
-    def init_center_view(self, centerview):
-       
-        subjectLbl = gtk.Label("Subject")
-        centerview.pack_start(self.justifyLeft(subjectLbl), False)
-        self._subject = hildon.Entry(gtk.HILDON_SIZE_FULLSCREEN_WIDTH)
-        self._subject.set_placeholder("enter a subject")
-        self._subject.set_text(str(self.type) + " : " + str(self.value))
-        centerview.pack_start(self._subject, False)
-        contentLbl = gtk.Label("Content")
-        centerview.pack_start(self.justifyLeft(contentLbl), False)
-        self._body = hildon.TextView()
-        self._body.set_placeholder("enter the message here")
-        self._body.set_wrap_mode(gtk.WRAP_WORD)
-        stacktrace = traceback.format_exception(self.type, self.value, self.traceback)
-        buf = self._body.get_buffer()
-        for line in stacktrace:
-            end = buf.get_end_iter()
-            buf.insert(end, line, len(line))
-        centerview.add(self._body)
-        return MaegenStackableWindow.init_center_view(self, centerview)
-
-
-    def init_bottom_button(self, bottomButtons):
-        post = self.create_button("Post issue", None)
-        post.connect("clicked", self.on_post_button_clicked, self)
-        self.add_button(post)                     
-        return MaegenStackableWindow.init_bottom_button(self, bottomButtons)
-
-    def on_post_button_clicked(self, widget, view):
-        buffer = view._body.get_buffer()
-        body = buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter())
-        subject =  view._subject.get_text()
-        self.submit_issue_callback(subject, body)
 
 
 class GenealogicalTreeView(MaegenStackableWindow):
