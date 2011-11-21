@@ -26,13 +26,6 @@
 Created on Nov 16, 2011
 
 @author: maemo
-
-def _show_about_dialog():
-    window = AboutView()
-    program = hildon.Program.get_instance()
-    program.add_window(window)
-    window.show_all()
-
 '''
 
 import hildon
@@ -67,11 +60,18 @@ def show_banner_information(mess):
        banner= hildon.hildon_banner_show_information(parent,"", mess)
        banner.set_timeout(2000)  
        
+
+def _show_about_dialog():
+    window = AboutView()
+    program = hildon.Program.get_instance()     
+    program.add_window(window)
+    window.show_all()
+
 def show_about_dialog(widget, data):
        '''
        Show an information dialog about the program
        '''
-       call_handled_method(show_about_dialog)
+       call_handled_method(_show_about_dialog)
 
 
 def _default_exception_handler(gtk_sync = False):
