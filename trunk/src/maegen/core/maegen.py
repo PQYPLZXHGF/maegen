@@ -37,7 +37,7 @@ import os.path
 
 from ..common import version 
 
-version.getInstance().submitRevision("$Revision: 155 $")
+version.getInstance().submitRevision("$Revision$")
 
 def get_maegen_storage_dir():
     '''

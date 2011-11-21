@@ -51,7 +51,7 @@ from maegen.core import maegen
 
 from maegen.common import version
 
-version.getInstance().submitRevision("$Revision: 155 $")
+version.getInstance().submitRevision("$Revision$")
 
 #gtk.gdk.threads_init()
 

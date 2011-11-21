@@ -51,7 +51,7 @@ import atom.core
 
 from maegen.common import version
 
-version.getInstance().submitRevision("$Revision: 155 $")
+version.getInstance().submitRevision("$Revision$")
 
 def not_yet_implemented():
     show_banner_information("not yet implemented")

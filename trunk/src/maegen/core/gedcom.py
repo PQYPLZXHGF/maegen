@@ -31,7 +31,7 @@ from string import Template
 
 from ..common import version 
 
-version.getInstance().submitRevision("$Revision: 155 $")
+version.getInstance().submitRevision("$Revision$")
 
 class GedcomWriter():
     '''
