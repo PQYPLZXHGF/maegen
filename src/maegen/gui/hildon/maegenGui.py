@@ -964,7 +964,7 @@ class FamilyView(MaegenStackableWindow):
         else:
             editBtn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO);
             editBtn.set_label("Edit");
-            editBtn.connect("clicked", self_on_edit_menu_clicked, None)
+            editBtn.connect("clicked", self.on_edit_menu_clicked, None)
             menu.append(editBtn)    
         
 
