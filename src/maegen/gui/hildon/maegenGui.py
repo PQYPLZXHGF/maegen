@@ -44,7 +44,7 @@ import pango
 
 
 import mock
-
+from maegen.gui.gtk.widget import  *
 from maegen.gui.gtk.utils import get_gender_image, get_gender_pixbuf, fill_widget_with_logo, get_life_date_str
 from maegen.gui.hildon.utils import show_about_dialog, call_handled_method, not_yet_implemented, MaegenStackableWindow
 from maegen.core import maegen
@@ -2182,16 +2182,17 @@ class GenealogicalTreeView(MaegenStackableWindow):
         
 
     def init_center_view(self, centerview):
-        self.drawing_area = gtk.DrawingArea()
-        self.real_width = self.compute_width()
-        self.drawing_area_width = max([800, self.real_width])
-        self.real_height = self.compute_height() 
-        self.drawing_area_height = max([400,self.real_height])          
-        self.drawing_area.set_size_request(self.drawing_area_width + 1, self.drawing_area_height + 1)  
-        self.pangolayout_name = self.drawing_area.create_pango_layout("")
-        self.pangolayout_life = self.drawing_area.create_pango_layout("")
-        self.drawing_area.connect("expose-event", self.area_expose_cb)        
-        centerview.add(self.drawing_area)
+#        self.drawing_area = gtk.DrawingArea()
+#        self.real_width = self.compute_width()
+#        self.drawing_area_width = max([800, self.real_width])
+#        self.real_height = self.compute_height() 
+#        self.drawing_area_height = max([400,self.real_height])          
+#        self.drawing_area.set_size_request(self.drawing_area_width + 1, self.drawing_area_height + 1)  
+#        self.pangolayout_name = self.drawing_area.create_pango_layout("")
+#        self.pangolayout_life = self.drawing_area.create_pango_layout("")
+#        self.drawing_area.connect("expose-event", self.area_expose_cb)        
+#        centerview.add(self.drawing_area)
+         centerview.add(GenTree(self.zcore, self.root, self.show_spouse))
 
     def area_expose_cb(self, area, event):
             self.gc = self.style.fg_gc[gtk.STATE_NORMAL]        
