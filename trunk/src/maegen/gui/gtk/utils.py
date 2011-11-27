@@ -30,6 +30,7 @@ Created on Nov 16, 2011
 
 import gtk
 
+
 from maegen.common import version
 
 version.getInstance().submitRevision("$Revision$")
@@ -76,3 +77,7 @@ def get_life_date_str(indi):
         year_birth_death += "-" + str(indi.deathDate.year)
         
     return year_birth_death
+
+
+
+                    
