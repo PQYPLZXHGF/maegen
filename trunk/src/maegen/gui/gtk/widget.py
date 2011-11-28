@@ -30,20 +30,22 @@ Created on Nov 27, 2011
 import logging
 
 import gtk
-import gobject
 from gtk import gdk
 
+import pango
+
+from maegen.gui.gtk.utils import get_gender_pixbuf, get_life_date_str
 
 from maegen.common import version
 
 version.getInstance().submitRevision("$Revision$")
 
-class GenTree(gtk.Widget):
+class GenTree(gtk.DrawingArea):
     '''
     This widget display a genealogical tree given a root individual
     '''
     def __init__(self, zcore, individual, show_spouse=False):
-        gtk.Widget.__init__(self)
+        gtk.DrawingArea.__init__(self)
         self.root = individual
         self.zcore = zcore
         self.show_spouse=show_spouse
@@ -52,90 +54,17 @@ class GenTree(gtk.Widget):
         self.HEIGHT_FOR_INDI = 70
         self.VERTICAL_SPACE = 100
         
-    def do_realize(self):
-        """Called when the widget should create all of its 
-        windowing resources.  We will create our gtk.gdk.Window
-        and load our star pixmap."""
-        
-        # First set an internal flag showing that we're realized
-        self.set_flags(self.flags() | gtk.REALIZED)
-        
-        # Create a new gdk.Window which we can draw on.
-        # Also say that we want to receive exposure events 
-        # and button click and button press events
-            
-        self.window = gtk.gdk.Window(
-            self.get_parent_window(),
-            width=self.allocation.width,
-            height=self.allocation.height,
-            window_type=gdk.WINDOW_CHILD,
-            wclass=gdk.INPUT_OUTPUT,
-            event_mask=self.get_events() | gtk.gdk.EXPOSURE_MASK
-                | gtk.gdk.BUTTON_PRESS_MASK)
-                
-        # Associate the gdk.Window with ourselves, Gtk+ needs a reference
-        # between the widget and the gdk window
-        self.window.set_user_data(self)
-        
-        # Attach the style to the gdk.Window, a style contains colors and
-        # GC contextes used for drawing
-        self.style.attach(self.window)
-        
-        # The default color of the background should be what
-        # the style (theme engine) tells us.
-        self.style.set_background(self.window, gtk.STATE_NORMAL)
-        self.window.move_resize(*self.allocation)
-        
-            
-        # self.style is a gtk.Style object, self.style.fg_gc is
-        # an array or graphic contexts used for drawing the forground
-        # colours    
-        self.gc = self.style.fg_gc[gtk.STATE_NORMAL]
-        self.connect("expose-event", self.area_expose_cb)    
+        self.drawing_area = self
+        self.real_width = self.compute_width()
+        self.drawing_area_width = max([800, self.real_width])
+        self.real_height = self.compute_height() 
+        self.drawing_area_height = max([400,self.real_height])          
+        self.drawing_area.set_size_request(self.drawing_area_width + 1, self.drawing_area_height + 1)  
+        self.pangolayout_name = self.drawing_area.create_pango_layout("")
+        self.pangolayout_life = self.drawing_area.create_pango_layout("")
+        self.drawing_area.connect("expose-event", self.area_expose_cb)        
         
         
-    def do_unrealize(self):
-        # The do_unrealized method is responsible for freeing the GDK resources
-        # De-associate the window we created in do_realize with ourselves
-        self.window.destroy()
-        
-    def do_size_request(self, requisition):
-        """From Widget.py: The do_size_request method Gtk+ is calling
-         on a widget to ask it the widget how large it wishes to be. 
-         It's not guaranteed that gtk+ will actually give this size 
-         to the widget.  So we will send gtk+ the size needed for
-         the maximum amount of stars"""
-        
-        
-        real_width = self.compute_width()
-        self.drawing_area_width = max([800, real_width])
-        real_height = self.compute_height() 
-        self.drawing_area_height = max([400,real_height])          
-        self.pangolayout_name = self.create_pango_layout("")
-        self.pangolayout_life = self.create_pango_layout("")
-        requisition.height = self.drawing_area_height + 1
-        requisition.width = self.drawing_area_width + 1
-    
-    
-    def do_size_allocate(self, allocation):
-        """The do_size_allocate is called by when the actual 
-        size is known and the widget is told how much space 
-        could actually be allocated Save the allocated space
-        self.allocation = allocation. The following code is
-        identical to the widget.py example"""
-    
-        if self.flags() & gtk.REALIZED:
-            self.window.move_resize(*allocation)
-        
-        
-    def area_expose_cb(self, area, event):
-        self.draw_tree(self.root, 0, self.drawing_area_width, 0)
-        
-    def do_expose_event(self, event):
-        """This is where the widget must draw itself."""                
-        self.area_expose_cb(self.window, event)
-        
-
     def draw_individual(self, indi, x, y):        
         '''
         Parameter:
@@ -146,11 +75,11 @@ class GenTree(gtk.Widget):
         #self.drawing_area.window.draw_rectangle(self.gc, False, top_left[0], top_left[1], self.WIDTH_FOR_INDI, self.HEIGHT_FOR_INDI)
         # Name
         self.pangolayout_name.set_text(str(indi))
-        self.window.draw_layout(self.gc, top_left[0] + 1  , top_left[1] + 1 , self.pangolayout_name)        
+        self.drawing_area.window.draw_layout(self.gc, top_left[0] + 1  , top_left[1] + 1 , self.pangolayout_name)        
         # gender picture if available
         pixbuf = get_gender_pixbuf(indi)
         if pixbuf :
-            pixbuf.render_to_drawable(self.window, self.gc, 0,0,top_left[0],top_left[1] + 1 + self.HEIGHT_FOR_INDI / 2,-1,-1)    
+            pixbuf.render_to_drawable(self.drawing_area.window, self.gc, 0,0,top_left[0],top_left[1] + 1 + self.HEIGHT_FOR_INDI / 2,-1,-1)    
             IMAGE_WIDTH = 13
             IMAGE_HEIGTH = 13
                                 
@@ -160,8 +89,16 @@ class GenTree(gtk.Widget):
         attrs = pango.AttrList()
         attrs.insert(pango.AttrScale(pango.SCALE_X_SMALL,0,len(life_str)))
         self.pangolayout_life.set_attributes(attrs)
-        self.window.draw_layout(self.gc, x , top_left[1] + 1 + self.HEIGHT_FOR_INDI / 2 , self.pangolayout_life)
-                 
+        self.drawing_area.window.draw_layout(self.gc, x , top_left[1] + 1 + self.HEIGHT_FOR_INDI / 2 , self.pangolayout_life)
+        
+        
+
+
+    def area_expose_cb(self, area, event):
+            self.gc = self.style.fg_gc[gtk.STATE_NORMAL]        
+            #self.drawing_area.window.draw_rectangle(self.gc, False,self.drawing_area_width / 2  - self.real_width/2, 0, self.real_width, self.real_height )
+            self.draw_tree(self.root, 0, self.drawing_area_width, 0)
+            
     
     def size_for_individual(self, indi):
         '''
@@ -205,7 +142,7 @@ class GenTree(gtk.Widget):
                 child_right_corner_x = child_left_corner_x + size_for_child            
                 x = self.draw_tree(child, child_left_corner_x, child_right_corner_x, top_y_for_child)      
                 # draw the small vertical link
-                self.window.draw_line(self.gc, x,top_y_for_child,x, y_for_horiz_row)         
+                self.drawing_area.window.draw_line(self.gc, x,top_y_for_child,x, y_for_horiz_row)         
                 if row_left_x is None:
                     row_left_x = x
                     row_right_x = x
@@ -213,11 +150,11 @@ class GenTree(gtk.Widget):
                     row_right_x = x
                 child_left_corner_x += size_for_child + self.HORIZONTAL_SPACE
             # draw horizontal row
-            self.window.draw_line(self.gc,row_left_x,y_for_horiz_row, row_right_x,y_for_horiz_row)
+            self.drawing_area.window.draw_line(self.gc,row_left_x,y_for_horiz_row, row_right_x,y_for_horiz_row)
             #compute the root abscisse
             resu = ( row_left_x + row_right_x ) / 2
             # draw the small vertical link
-            self.window.draw_line(self.gc,resu,y_for_horiz_row, resu, y_for_horiz_row - self.VERTICAL_SPACE / 2)            
+            self.drawing_area.window.draw_line(self.gc,resu,y_for_horiz_row, resu, y_for_horiz_row - self.VERTICAL_SPACE / 2)            
             # draw the root node            
             self.draw_individual(individual, resu, top_y)
         return resu        
@@ -237,5 +174,9 @@ class GenTree(gtk.Widget):
         
         depth = depth_for_individual(self.root)
         return  depth *  self.HEIGHT_FOR_INDI + ( depth - 1) * self.VERTICAL_SPACE
+            
+            
+        
+        
 
-gobject.type_register(GenTree)
+#gobject.type_register(GenTree)
