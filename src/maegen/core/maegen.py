@@ -190,29 +190,27 @@ class Maegen(object):
         '''
         Return the number of individual in the current database
         '''
-        return len(self.database.individuals)
+        return self.database.individuals_count()
     
     def families_count(self):
         '''
         Return the number of families in the current database
         '''
-        return len(self.database.families)
+        return self.database.families_count()
     
     def branches_count(self):
         '''
         Return the count of branches (tree with ancestor as root) in the database
-        '''
-        indi_without_parents = filter(lambda x: x.father is None and x.mother is None, self.database.individuals)
-        return len(indi_without_parents)
+        '''    
+        return self.database.branches_count()
     
     
     
     def names_count(self):
         '''
         return the count of patronymic name in the database
-        '''
-        
-        return len(set(map(lambda indi: indi.name.upper(),self.database.individuals)))
+        '''        
+        return self.database.names_count()
 
     def children_count(self, individual):
         '''
@@ -527,6 +525,35 @@ class Database(object):
     def __init__(self):
         self.individuals = set([])
         self.families = set([])
+        
+        
+    def individuals_count(self):
+        '''
+        Return the number of individual in the current database
+        '''
+        return len(self.individuals)
+    
+    def families_count(self):
+        '''
+        Return the number of families in the current database
+        '''
+        return len(self.families)
+    
+    def branches_count(self):
+        '''
+        Return the count of branches (tree with ancestor as root) in the database
+        '''
+        indi_without_parents = filter(lambda x: x.father is None and x.mother is None, self.individuals)
+        return len(indi_without_parents)
+    
+    
+    
+    def names_count(self):
+        '''
+        return the count of patronymic name in the database
+        '''
+        
+        return len(set(map(lambda indi: indi.name.upper(),self.individuals)))        
 
 class Individual(object):
     '''
