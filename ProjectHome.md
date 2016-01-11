@@ -1,0 +1,3 @@
+Maegen is a genealogical collector application. Use it on the go to store genealogical data including individuals and relational informations. Maegen can be used to browse collected data on the device but the main goal is its capabilities to export the database in a GEDCOM file which can be imported into any desktop genealocial application.
+
+Right now, Maegen is usable to collect data on the go. You can download the last stable version on the featured link on the left or the last snapshot on the [downloads page](http://code.google.com/p/maegen/downloads/list). You are strongly suggested to install easy\_install on the device and use the command `easy_install maegen` as root in order to be up-to-date.
